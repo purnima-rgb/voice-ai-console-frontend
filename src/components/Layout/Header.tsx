@@ -1,4 +1,3 @@
-import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ROLE_DISPLAY } from '../../types';
 import Button from '../Common/Button';
