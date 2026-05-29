@@ -21,12 +21,12 @@ export default function CallingDataUpload() {
     e.preventDefault();
     setIsDragging(false);
     const dropped = e.dataTransfer.files[0];
-    if (dropped && dropped.name.endsWith('.csv')) {
+    if (dropped && /\.(csv|xlsx|xls)$/i.test(dropped.name)) {
       setFile(dropped);
       setResult(null);
       setError('');
     } else {
-      setError('Only CSV files are accepted.');
+      setError('Only CSV or Excel (.xlsx, .xls) files are accepted.');
     }
   }, []);
 
@@ -110,7 +110,7 @@ export default function CallingDataUpload() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv"
+          accept=".csv,.xlsx,.xls"
           className="hidden"
           onChange={handleFileChange}
         />
@@ -138,10 +138,10 @@ export default function CallingDataUpload() {
                 d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
             </svg>
             <p className="text-base font-medium text-gray-600">
-              Drag & drop your Calling Data CSV here
+              Drag & drop your Calling Data file here
             </p>
             <p className="text-sm text-gray-400">or click to browse</p>
-            <p className="text-xs text-gray-300 mt-1">CSV files only, up to 50MB</p>
+            <p className="text-xs text-gray-300 mt-1">CSV or Excel files (.csv, .xlsx, .xls), up to 50MB</p>
           </div>
         )}
       </div>
@@ -171,7 +171,7 @@ export default function CallingDataUpload() {
             </span>
           )}
           {filtersComplete && !file && (
-            <span className="text-sm text-gray-400">Choose a CSV file to upload</span>
+            <span className="text-sm text-gray-400">Choose a CSV or Excel file to upload</span>
           )}
         </div>
       )}

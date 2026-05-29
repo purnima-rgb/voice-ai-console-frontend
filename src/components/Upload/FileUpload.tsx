@@ -40,12 +40,12 @@ export default function FileUpload() {
     e.preventDefault();
     setIsDragging(false);
     const dropped = e.dataTransfer.files[0];
-    if (dropped && dropped.name.endsWith('.csv')) {
+    if (dropped && /\.(csv|xlsx|xls)$/i.test(dropped.name)) {
       setFile(dropped);
       setResult(null);
       setError('');
     } else {
-      setError('Only CSV files are accepted.');
+      setError('Only CSV or Excel (.xlsx, .xls) files are accepted.');
     }
   }, []);
 
@@ -119,7 +119,7 @@ export default function FileUpload() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv"
+          accept=".csv,.xlsx,.xls"
           className="hidden"
           onChange={handleFileChange}
         />
@@ -147,10 +147,10 @@ export default function FileUpload() {
                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
             <p className="text-base font-medium text-gray-600">
-              Drag & drop your CSV file here
+              Drag & drop your CSV or Excel file here
             </p>
             <p className="text-sm text-gray-400">or click to browse</p>
-            <p className="text-xs text-gray-300 mt-1">CSV files only, up to 50MB</p>
+            <p className="text-xs text-gray-300 mt-1">CSV or Excel files (.csv, .xlsx, .xls), up to 50MB</p>
           </div>
         )}
       </div>
@@ -183,7 +183,7 @@ export default function FileUpload() {
               {!university ? 'Select a university' :
                !program ? 'Select a program' :
                !dataType ? 'Select data type' :
-               'Select a CSV file to upload'}
+               'Select a CSV or Excel file to upload'}
             </p>
           )}
         </div>
