@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { uploadStudentList, uploadGradeSheet, downloadErrorReport } from '../../services/api';
 import { University, UploadResult } from '../../types';
-import FilterBar from './FilterBar';
+import FilterBar, { FilterDataType } from './FilterBar';
 import Button from '../Common/Button';
 
 export default function FileUpload() {
@@ -26,7 +26,7 @@ export default function FileUpload() {
 
   const [university, setUniversity] = useState<University | ''>('');
   const [program, setProgram] = useState('');
-  const [dataType, setDataType] = useState<'student-list' | 'grade-sheet' | ''>('');
+  const [dataType, setDataType] = useState<FilterDataType>('');
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);

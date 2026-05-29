@@ -20,7 +20,7 @@ export interface ErrorRow {
   errorMessage: string;
 }
 
-export type University = 'GGU' | 'Edgewood' | 'Rushford' | 'ESGCI';
+export type University = 'GGU';
 export type DataType = 'student-list' | 'grade-sheet' | 'calling-data';
 
 export interface UploadRecord {
@@ -46,16 +46,10 @@ export interface Stats {
 
 export const UNIVERSITIES: Record<University, string[]> = {
   GGU: ['MBA', 'DBA', 'MS Management'],
-  Edgewood: ['MBA', 'DBA'],
-  Rushford: ['MBA', 'Executive MBA'],
-  ESGCI: ['MBA', 'MSc Management'],
 };
 
 export const UNIVERSITY_NAMES: Record<University, string> = {
   GGU: 'Golden Gate University',
-  Edgewood: 'Edgewood University',
-  Rushford: 'Rushford Business School',
-  ESGCI: 'ESGCI Paris',
 };
 
 export const ROLE_DISPLAY: Record<User['role'], string> = {

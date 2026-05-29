@@ -1,15 +1,21 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { uploadCallingData, downloadErrorReport } from '../../services/api';
-import { UploadResult } from '../../types';
+import { University, UploadResult } from '../../types';
 import Button from '../Common/Button';
+import FilterBar from './FilterBar';
 
 export default function CallingDataUpload() {
+  const [university, setUniversity] = useState<University | ''>('');
+  const [program, setProgram] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [result, setResult] = useState<UploadResult | null>(null);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const filtersComplete = !!(university && program);
+  const canUpload = filtersComplete && !!file && !isUploading;
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -34,12 +40,12 @@ export default function CallingDataUpload() {
   };
 
   const handleUpload = async () => {
-    if (!file) return;
+    if (!file || !university || !program) return;
     setIsUploading(true);
     setError('');
     setResult(null);
     try {
-      const res = await uploadCallingData(file);
+      const res = await uploadCallingData(file, university, program);
       setResult(res);
     } catch (err: unknown) {
       const msg =
@@ -60,6 +66,17 @@ export default function CallingDataUpload() {
 
   return (
     <div className="space-y-6">
+      {/* Filters */}
+      <FilterBar
+        university={university}
+        program={program}
+        dataType="calling-data"
+        onUniversityChange={setUniversity}
+        onProgramChange={setProgram}
+        onDataTypeChange={() => {}}
+        lockedDataType="calling-data"
+      />
+
       {/* Info banner */}
       <div className="bg-cyan-50 border border-cyan-200 rounded-xl p-4 flex items-start gap-3">
         <svg className="w-5 h-5 text-cyan-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -138,15 +155,25 @@ export default function CallingDataUpload() {
 
       {/* Upload button */}
       {!result && (
-        <Button
-          variant="primary"
-          size="lg"
-          isLoading={isUploading}
-          disabled={!file || isUploading}
-          onClick={handleUpload}
-        >
-          {isUploading ? 'Uploading...' : 'Upload Calling Data'}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="primary"
+            size="lg"
+            isLoading={isUploading}
+            disabled={!canUpload}
+            onClick={handleUpload}
+          >
+            {isUploading ? 'Uploading...' : 'Upload Calling Data'}
+          </Button>
+          {!filtersComplete && (
+            <span className="text-sm text-gray-400">
+              {!university ? 'Select a university' : 'Select a program'}
+            </span>
+          )}
+          {filtersComplete && !file && (
+            <span className="text-sm text-gray-400">Choose a CSV file to upload</span>
+          )}
+        </div>
       )}
 
       {/* Results */}

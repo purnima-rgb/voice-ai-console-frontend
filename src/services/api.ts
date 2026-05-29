@@ -76,9 +76,15 @@ export async function uploadGradeSheet(
   return res.data;
 }
 
-export async function uploadCallingData(file: File): Promise<UploadResult> {
+export async function uploadCallingData(
+  file: File,
+  university: string,
+  program: string
+): Promise<UploadResult> {
   const formData = new FormData();
   formData.append('file', file);
+  formData.append('university', university);
+  formData.append('program', program);
 
   const res = await api.post('/upload/calling-data', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
