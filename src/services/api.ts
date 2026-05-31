@@ -113,6 +113,16 @@ export async function fetchCallingData(): Promise<{ data: Record<string, string>
   return res.data;
 }
 
+export interface AgentMapping {
+  agentName: string;
+  agentId: string;
+}
+
+export async function fetchAgentMapping(): Promise<{ agents: AgentMapping[]; total: number }> {
+  const res = await api.get('/data/agent-mapping');
+  return res.data;
+}
+
 export async function fetchUploadHistory(filters?: {
   dataType?: string;
   university?: string;

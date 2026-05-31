@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import Button from '../Common/Button';
 
 /**
@@ -193,6 +194,80 @@ const GRADE_ROWS: string[][] = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
+//   Calling Data dataset
+//
+//   ALL columns are mandatory — no optional fields. Column names match the
+//   GGU calling-data sample CSV exactly.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CALLING_OPTIONAL = new Set<string>(); // none
+
+const CALLING_TEXT_COLS = new Set([
+  'User ID',
+  'Contact',
+  'Agent ID',
+]);
+
+const CALLING_HEADERS = [
+  'User ID', 'Email ID', 'First Name', 'Last Name', 'University', 'Program',
+  'Cohort #', 'Cohort ID', 'Status', 'Country Of Residence', 'Contact',
+  'Date ( DD/MM/YYYY)', 'Time ( 24 Hours )', 'Timezone', 'Reason', 'Agent ID',
+];
+
+// Sample rows match the corrected calling-data CSV: User ID first (numeric),
+// then Email ID, then First/Last Name.
+const CALLING_ROWS: string[][] = [
+  [
+    '4275831', 'aarav.mehta@example.com', 'Aarav', 'Mehta', 'GGU', 'MBA',
+    'C1', '1234', 'Active', 'Canada', '919876543210',
+    '29-05-2026', '18:00', 'GMT-2:30',
+    'Missed Assignment Deadline / Reattempt Window Agent', '6a16dd14ba7c5d66b6c4d2b4',
+  ],
+  [
+    '7316095', 'rohan.gupta@example.com', 'Rohan', 'Gupta', 'GGU', 'MBA',
+    'C2', '6789', 'Active', 'India', '919988776655',
+    '30-05-2026', '18:30', 'IST',
+    'Grade Dispute (Learner Believes Marks Are Wrong) Agent', '6a16dc78ba7c5d66b6c4d264',
+  ],
+  [
+    '2146798', 'ananya.iyer@example.com', 'Ananya', 'Iyer', 'GGU', 'MBA',
+    'C3', '1231', 'Active', 'United Kingdom', '919345678901',
+    '29-05-2026', '12:20', 'GMT+1',
+    'Deferral Request (Work or Personal Demands) Agent', '6a16dc61ba7c5d66b6c4d21b',
+  ],
+  [
+    '5627019', 'vikram.singh@example.com', 'Vikram', 'Singh', 'GGU', 'MBA',
+    'C1', '1234', 'Active', 'Singapore', '919988112233',
+    '30-05-2026', '18:00', 'SGT',
+    'Slow Support Response Agent', '6a16dc37ba7c5d66b6c4d1cb',
+  ],
+  [
+    '2286745', 'siddharth.roy@example.com', 'Siddharth', 'Roy', 'GGU', 'MBA',
+    'C3', '1231', 'Active', 'Vietnam', '919210987654',
+    '30-05-2026', '18:30', 'GMT+7',
+    'Certificate and Degree Delivery Query Agent', '6a16d63dba7c5d66b6c4d10f',
+  ],
+  [
+    '6620189', 'manish.tiwari@example.com', 'Manish', 'Tiwari', 'GGU', 'MBA',
+    'C2', '6789', 'Active', 'Vietnam', '919076543212',
+    '29-05-2026', '14:00', 'GMT+7',
+    'Extension Request (Health or Personal Reasons) Agent', '6a16d626ba7c5d66b6c4d0c6',
+  ],
+  [
+    '5613476', 'partho.ghosh11@example.com', 'Partho', 'Ghosh', 'GGU', 'MBA',
+    'C3', '1231', 'Active', 'India', '919988112263',
+    '30-05-2026', '18:00', 'IST',
+    'New Batch Onboarding Call Agent', '6a16bd59ba7c5d66b6c4cee9',
+  ],
+  [
+    '5930286', 'tanushree.shee19@example.com', 'Tanushree', 'Shee', 'GGU', 'MBA',
+    'C1', '1234', 'Active', 'India', '919984776655',
+    '29-05-2026', '14:00', 'IST',
+    'Deferral Request (Work or Personal Demands) Agent', '6a16dc61ba7c5d66b6c4d21b',
+  ],
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
 //   CSV helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -284,6 +359,19 @@ function buildGradeSheetCSV(): string {
   ].join('\n');
 }
 
+function buildCallingCSV(): string {
+  const header = CALLING_HEADERS.map(escapeCSV).join(',');
+  const lines = CALLING_ROWS.map((row) =>
+    row.map((value, idx) => {
+      const col = CALLING_HEADERS[idx];
+      const v = value || '';
+      if (v && CALLING_TEXT_COLS.has(col)) return excelTextCell(v);
+      return escapeCSV(v);
+    }).join(',')
+  );
+  return [header, ...lines].join('\n');
+}
+
 function downloadCSV(content: string, fileName: string) {
   const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -370,20 +458,26 @@ function ReferenceTable({
         </Button>
       </div>
 
-      {/* Optional columns chips */}
+      {/* Optional columns chips — omit the chip-list block when empty
+          (e.g. calling data has zero optional columns), but always keep
+          the explanatory note. */}
       <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <h3 className="font-semibold text-gray-800 text-sm mb-3">Optional columns (can be left blank)</h3>
-        <div className="flex flex-wrap gap-2">
-          {chipHeaders.map((h) => (
-            <span
-              key={h}
-              className="inline-flex items-center px-3 py-1 bg-gray-100 border border-gray-300 text-gray-700 text-xs rounded-full"
-            >
-              {h}
-            </span>
-          ))}
-        </div>
-        <p className="text-xs text-gray-500 mt-3 leading-relaxed">{optionalNote}</p>
+        <h3 className="font-semibold text-gray-800 text-sm mb-3">
+          {chipHeaders.length > 0 ? 'Optional columns (can be left blank)' : 'Mandatory columns only'}
+        </h3>
+        {chipHeaders.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {chipHeaders.map((h) => (
+              <span
+                key={h}
+                className="inline-flex items-center px-3 py-1 bg-gray-100 border border-gray-300 text-gray-700 text-xs rounded-full"
+              >
+                {h}
+              </span>
+            ))}
+          </div>
+        )}
+        <p className="text-xs text-gray-500 leading-relaxed">{optionalNote}</p>
       </div>
 
       {/* Sample data table */}
@@ -468,21 +562,37 @@ function ReferenceTable({
 //   Page component with tabs
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Tab = 'student-list' | 'grade-sheet';
+type Tab = 'student-list' | 'grade-sheet' | 'calling-data';
 
 const TAB_LABEL: Record<Tab, string> = {
   'student-list': 'Student List',
   'grade-sheet':  'Grade Sheet',
+  'calling-data': 'Calling Data',
 };
 
 export default function SampleData() {
-  const [tab, setTab] = useState<Tab>('student-list');
+  const { user } = useAuth();
+
+  // Support agents only see the Calling Data tab — they don't work with
+  // student / grade sheet data. Admins and data managers see all three.
+  const visibleTabs: Tab[] = useMemo(() => (
+    user?.role === 'support_agent'
+      ? ['calling-data']
+      : ['student-list', 'grade-sheet', 'calling-data']
+  ), [user?.role]);
+
+  const [tab, setTab] = useState<Tab>(visibleTabs[0]);
+
+  // Reset to first visible tab if role changes (e.g. login as different user)
+  useEffect(() => {
+    if (!visibleTabs.includes(tab)) setTab(visibleTabs[0]);
+  }, [visibleTabs, tab]);
 
   return (
     <div className="space-y-6">
       {/* Tab switcher */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-        {(Object.keys(TAB_LABEL) as Tab[]).map((t) => (
+        {visibleTabs.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -521,6 +631,20 @@ export default function SampleData() {
           optional={GRADE_OPTIONAL}
           optionalChips={Array.from(GRADE_OPTIONAL_BASE)}
           onDownload={() => downloadCSV(buildGradeSheetCSV(), 'GGU-MBA-Grade-Sheet-Sample.csv')}
+          downloadLabel="Download Sample CSV"
+        />
+      )}
+
+      {tab === 'calling-data' && (
+        <ReferenceTable
+          title="Calling Data — Reference"
+          description="Use this as a template when preparing your Calling Data CSV for upload. Every column is mandatory — empty values will be flagged in the error report. Look up the correct Agent ID for each Reason on the Agent Mapping page before uploading."
+          optionalNote="All columns in calling data are mandatory. There are no optional fields — every cell must have a value on every row."
+          headers={CALLING_HEADERS}
+          rows={CALLING_ROWS}
+          optional={CALLING_OPTIONAL}
+          optionalChips={[]}
+          onDownload={() => downloadCSV(buildCallingCSV(), 'GGU-MBA-Calling-Data-Sample.csv')}
           downloadLabel="Download Sample CSV"
         />
       )}
