@@ -113,8 +113,16 @@ export async function fetchCallingData(): Promise<{ data: Record<string, string>
   return res.data;
 }
 
-export async function fetchUploadHistory(): Promise<{ uploads: UploadRecord[]; total: number }> {
-  const res = await api.get('/data/upload-history');
+export async function fetchUploadHistory(filters?: {
+  dataType?: string;
+  university?: string;
+  program?: string;
+}): Promise<{ uploads: UploadRecord[]; total: number }> {
+  const params: Record<string, string> = {};
+  if (filters?.dataType)   params.dataType   = filters.dataType;
+  if (filters?.university) params.university = filters.university;
+  if (filters?.program)    params.program    = filters.program;
+  const res = await api.get('/data/upload-history', { params });
   return res.data;
 }
 

@@ -9,6 +9,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/sample-data': 'Sample Data',
   '/calling-data': 'Calling Data',
   '/data-view': 'View Data',
+  '/upload-history': 'Upload History',
 };
 
 export default function AppLayout() {
