@@ -11,11 +11,24 @@ import Button from '../Common/Button';
  *   Concentration. Everything else in the uploaded CSV is mandatory.
  */
 const OPTIONAL_COLUMNS = new Set([
+  'Last Name',
   'Prism User ID',
   'GGU User ID',
   'GGU Email',
   'Region',
   'Concentration',
+]);
+
+/**
+ * Columns whose values must be preserved as text even when they look like
+ * numbers. Long phone numbers like 918928220913 would otherwise be displayed
+ * as scientific notation (9.18928E+11) when the file is opened in Excel.
+ */
+const TEXT_COLUMNS = new Set([
+  'Contact',
+  'User ID',
+  'GGU User ID',
+  'Prism User ID',
 ]);
 
 const SAMPLE_HEADERS = [
@@ -87,16 +100,37 @@ const SAMPLE_ROWS: string[][] = [
   ],
 ];
 
+/** Standard CSV escape: wrap in quotes + double inner quotes if needed. */
 function escapeCSV(v: string): string {
-  if (v.includes(',') || v.includes('"') || v.includes('\n')) {
+  if (v.includes(',') || v.includes('"') || v.includes('\n') || v.includes('\r')) {
     return `"${v.replace(/"/g, '""')}"`;
   }
   return v;
 }
 
+/**
+ * Excel text-cell formula:  ="918928220913"
+ * Forces Excel to treat long digit strings as TEXT — preserves phone
+ * numbers / IDs as-is instead of rendering them in scientific notation
+ * (e.g. 9.18928E+11). The literal payload contains a quote so it has to
+ * be CSV-escaped: the on-disk form is  "=""918928220913"""
+ * Google Sheets recognizes this too; plain text viewers will show the
+ * raw ="..." which is acceptable for a reference file.
+ */
+function excelTextCell(v: string): string {
+  return `"=""${v.replace(/"/g, '""')}"""`;
+}
+
 function buildSampleCSV(): string {
   const header = SAMPLE_HEADERS.map(escapeCSV).join(',');
-  const lines = SAMPLE_ROWS.map((row) => row.map(escapeCSV).join(','));
+  const lines = SAMPLE_ROWS.map((row) =>
+    row.map((value, colIdx) => {
+      const header = SAMPLE_HEADERS[colIdx];
+      const v = value || '';
+      if (v && TEXT_COLUMNS.has(header)) return excelTextCell(v);
+      return escapeCSV(v);
+    }).join(',')
+  );
   return [header, ...lines].join('\n');
 }
 

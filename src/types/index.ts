@@ -7,7 +7,14 @@ export interface User {
 
 export interface UploadResult {
   uploadId: string;
+  /**
+   * True only when every row passed validation. The backend rejects partial
+   * uploads — when success=false, no data was saved and the user must fix
+   * the errors and re-upload.
+   */
+  success: boolean;
   totalRows: number;
+  /** Always 0 when success=false (partial saves are disallowed). */
   validRows: number;
   errorRows: number;
   errors: ErrorRow[];
