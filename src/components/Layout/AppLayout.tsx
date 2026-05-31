@@ -6,6 +6,7 @@ import Header from './Header';
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/upload': 'Upload Data',
+  '/sample-data': 'Sample Data',
   '/calling-data': 'Calling Data',
   '/data-view': 'View Data',
 };

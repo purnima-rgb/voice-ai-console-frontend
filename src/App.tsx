@@ -7,6 +7,7 @@ import Dashboard from './components/Dashboard/Dashboard';
 import FileUpload from './components/Upload/FileUpload';
 import CallingDataUpload from './components/Upload/CallingDataUpload';
 import DataTable from './components/DataView/DataTable';
+import SampleData from './components/SampleData/SampleData';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -69,6 +70,7 @@ function AppRoutes() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="upload" element={<FileUpload />} />
+        <Route path="sample-data" element={<SampleData />} />
         <Route path="calling-data" element={<CallingDataUpload />} />
         <Route path="data-view" element={<DataTable />} />
       </Route>
