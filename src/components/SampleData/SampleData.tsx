@@ -306,13 +306,21 @@ interface ReferenceTableProps {
   optionalNote: string;
   headers: string[];
   rows: string[][];
+  /** Full optional set — used for table-cell coloring + mandatory/optional counts. */
   optional: Set<string>;
+  /**
+   * Subset of optional column names to display as chips. If omitted, ALL
+   * optional headers are listed (good when the optional set is small). For
+   * the Grade Sheet — where we don't want to list every "<Course> - Grade"
+   * /"<Course> - GPA" — pass just the distinct base ones.
+   */
+  optionalChips?: string[];
   onDownload: () => void;
   downloadLabel: string;
 }
 
 function ReferenceTable({
-  title, description, optionalNote, headers, rows, optional,
+  title, description, optionalNote, headers, rows, optional, optionalChips,
   onDownload, downloadLabel,
 }: ReferenceTableProps) {
   const mandatoryHeaders = useMemo(
@@ -323,6 +331,7 @@ function ReferenceTable({
     () => headers.filter((h) => optional.has(h)),
     [headers, optional]
   );
+  const chipHeaders = optionalChips ?? optionalHeaders;
 
   return (
     <div className="space-y-6">
@@ -365,7 +374,7 @@ function ReferenceTable({
       <div className="bg-white border border-gray-200 rounded-xl p-5">
         <h3 className="font-semibold text-gray-800 text-sm mb-3">Optional columns (can be left blank)</h3>
         <div className="flex flex-wrap gap-2">
-          {optionalHeaders.map((h) => (
+          {chipHeaders.map((h) => (
             <span
               key={h}
               className="inline-flex items-center px-3 py-1 bg-gray-100 border border-gray-300 text-gray-700 text-xs rounded-full"
@@ -505,11 +514,12 @@ export default function SampleData() {
       {tab === 'grade-sheet' && (
         <ReferenceTable
           title="Grade Sheet — Reference"
-          description="Use this as a template when preparing your Grade Sheet CSV for upload. The file uses GGU's multi-row header layout (title + summary headers + course names + main field headers). Column names vary across MBA / DBA / GGU ET, but the optional list stays the same."
-          optionalNote="Slot / Concentration, GGU Learner Status, and Last Name are always optional. Per-course Grade and GPA cells are also treated as optional — students may have courses they haven't attempted yet (e.g. Concentration 1/2/3)."
+          description="Use this as a template when preparing your Grade Sheet CSV for upload. The file uses GGU's multi-row header layout (title + summary headers + course names + main field headers). Course names vary across MBA / DBA / GGU ET — the per-course Grade and GPA cells are always optional regardless of how many courses your program has."
+          optionalNote="The 3 columns above are always optional. In addition, every per-course Grade and GPA cell is optional — a student may not yet have attempted a course (e.g. blank Concentration 1/2/3 grades for someone still in progress). That rule applies to every program automatically; no need to list each course by name."
           headers={GRADE_HEADERS}
           rows={GRADE_ROWS}
           optional={GRADE_OPTIONAL}
+          optionalChips={Array.from(GRADE_OPTIONAL_BASE)}
           onDownload={() => downloadCSV(buildGradeSheetCSV(), 'GGU-MBA-Grade-Sheet-Sample.csv')}
           downloadLabel="Download Sample CSV"
         />
