@@ -34,7 +34,7 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    label: 'Sample Data',
+    label: 'Reference Data',
     to: '/sample-data',
     roles: ['system_admin', 'data_manager', 'support_agent'],
     icon: (
