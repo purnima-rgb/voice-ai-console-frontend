@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   fetchStudentList,
   fetchGradeSheet,
   fetchCallingData,
-  downloadUnifiedCSV,
 } from '../../services/api';
 import { University, UNIVERSITIES, UNIVERSITY_NAMES } from '../../types';
 import Button from '../Common/Button';
@@ -42,8 +42,6 @@ export default function DataTable() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadMsg, setDownloadMsg] = useState('');
 
   const programs = university ? UNIVERSITIES[university] : [];
 
@@ -78,20 +76,6 @@ export default function DataTable() {
   const handleUniversityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setUniversity(e.target.value as University | '');
     setProgram('');
-  };
-
-  const handleDownloadUnified = async () => {
-    setIsDownloading(true);
-    setDownloadMsg('');
-    try {
-      await downloadUnifiedCSV();
-      setDownloadMsg('Unified CSV downloaded successfully!');
-      setTimeout(() => setDownloadMsg(''), 4000);
-    } catch {
-      setDownloadMsg('Download failed. Ensure there is data available.');
-    } finally {
-      setIsDownloading(false);
-    }
   };
 
   const columns = data.length > 0 ? Object.keys(data[0]) : [];
@@ -153,18 +137,18 @@ export default function DataTable() {
 
         <div className="ml-auto flex items-center gap-3">
           {(user.role === 'system_admin' || user.role === 'data_manager') && (
-            <Button
-              variant="success"
-              size="md"
-              isLoading={isDownloading}
-              onClick={handleDownloadUnified}
+            <Link
+              to="/upload-history?dataType=calling-data"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
+                bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+              title="Per-upload unified CSV snapshots are downloadable from the Upload History page"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Download Unified CSV
-            </Button>
+              Unified CSV → Upload History
+            </Link>
           )}
           <Button variant="secondary" size="md" onClick={loadData} disabled={loading}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,12 +159,6 @@ export default function DataTable() {
           </Button>
         </div>
       </div>
-
-      {downloadMsg && (
-        <div className={`p-3 rounded-lg text-sm ${downloadMsg.includes('failed') ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
-          {downloadMsg}
-        </div>
-      )}
 
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">

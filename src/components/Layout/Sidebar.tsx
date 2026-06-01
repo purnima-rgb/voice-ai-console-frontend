@@ -90,7 +90,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     label: 'Generate Report',
-    to: '/data-view?tab=unified',
+    to: '/upload-history?dataType=calling-data',
     roles: ['system_admin', 'data_manager'],
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

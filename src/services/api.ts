@@ -141,26 +141,9 @@ export async function fetchStats(): Promise<Stats> {
   return res.data;
 }
 
-export async function downloadUnifiedCSV(): Promise<void> {
-  const token = localStorage.getItem('auth_token');
-  const res = await fetch('http://localhost:3001/api/data/unified-csv', {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!res.ok) {
-    throw new Error('Failed to download unified CSV');
-  }
-
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `unified-voice-ai-${new Date().toISOString().split('T')[0]}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
+// downloadUnifiedCSV (legacy aggregate) removed — per-upload snapshots are
+// now the canonical way to fetch the Voice AI unified input file. Use
+// downloadUnifiedCSVForUpload(uploadId) instead.
 
 /**
  * Download the per-upload unified Voice AI CSV snapshot for a calling-data

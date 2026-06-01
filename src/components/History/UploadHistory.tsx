@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { fetchUploadHistory, downloadErrorReport, downloadUnifiedCSVForUpload } from '../../services/api';
 import {
@@ -57,7 +58,9 @@ function formatDate(iso: string): string {
 export default function UploadHistory() {
   const { user } = useAuth();
 
-  const [dataType, setDataType]     = useState<DataTypeFilter>('');
+  const [searchParams] = useSearchParams();
+  const initialDataType = (searchParams.get('dataType') || '') as DataTypeFilter;
+  const [dataType, setDataType]     = useState<DataTypeFilter>(initialDataType);
   const [university, setUniversity] = useState<University | ''>('');
   const [program, setProgram]       = useState('');
   const [uploads, setUploads]       = useState<UploadRecord[]>([]);
