@@ -86,8 +86,9 @@ export default function CallingDataUpload() {
         <div>
           <p className="text-sm font-semibold text-cyan-700">Calling Data Upload</p>
           <p className="text-xs text-cyan-600 mt-0.5">
-            Upload the unified Voice AI calling output CSV. Required columns: Email ID, First Name,
-            Last Name, Contact, University, Program, Query Type, Scheduled Date, Scheduled Time, Agent Name.
+            Upload the calling-data CSV. All columns are mandatory: User ID, Email ID, First Name,
+            Last Name, University, Program, Cohort #, Cohort ID, Status, user_country_of_residence,
+            user_contact, from_number, date_of_call, time_of_call, timezone, reason, agent_id.
           </p>
         </div>
       </div>

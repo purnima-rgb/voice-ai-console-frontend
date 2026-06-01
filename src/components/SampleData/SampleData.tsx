@@ -204,66 +204,69 @@ const CALLING_OPTIONAL = new Set<string>(); // none
 
 const CALLING_TEXT_COLS = new Set([
   'User ID',
-  'Contact',
-  'Agent ID',
+  'user_contact',
+  'from_number',
+  'agent_id',
 ]);
 
 const CALLING_HEADERS = [
   'User ID', 'Email ID', 'First Name', 'Last Name', 'University', 'Program',
-  'Cohort #', 'Cohort ID', 'Status', 'Country Of Residence', 'Contact',
-  'Date ( DD/MM/YYYY)', 'Time ( 24 Hours )', 'Timezone', 'Reason', 'Agent ID',
+  'Cohort #', 'Cohort ID', 'Status',
+  'user_country_of_residence', 'user_contact', 'from_number',
+  'date_of_call', 'time_of_call', 'timezone', 'reason', 'agent_id',
 ];
 
-// Sample rows match the corrected calling-data CSV: User ID first (numeric),
-// then Email ID, then First/Last Name.
+// Sample rows use real GGU MBA User IDs (6032552 Naveena, 6017168 Jaya, …)
+// so the unified-CSV join with the Student List / Grade Sheet actually
+// populates user_metadata when an admin runs through the demo.
 const CALLING_ROWS: string[][] = [
   [
-    '4275831', 'aarav.mehta@example.com', 'Aarav', 'Mehta', 'GGU', 'MBA',
-    'C1', '1234', 'Active', 'Canada', '919876543210',
-    '29-05-2026', '18:00', 'GMT-2:30',
-    'Missed Assignment Deadline / Reattempt Window Agent', '6a16dd14ba7c5d66b6c4d2b4',
+    '6032552', 'naveena.manoj03@mail.com', 'Naveena', 'Manoj', 'GGU', 'MBA',
+    'C17', '5594', 'Inactive',
+    'India', '919222226468', '911169323435',
+    '01-06-2026', '13:15', 'GMT+5:30',
+    'Missed Assignment Deadline / Reattempt Window Agent',
+    '6a16dd14ba7c5d66b6c4d2b4',
   ],
   [
-    '7316095', 'rohan.gupta@example.com', 'Rohan', 'Gupta', 'GGU', 'MBA',
-    'C2', '6789', 'Active', 'India', '919988776655',
-    '30-05-2026', '18:30', 'IST',
-    'Grade Dispute (Learner Believes Marks Are Wrong) Agent', '6a16dc78ba7c5d66b6c4d264',
+    '6017168', 'jaya.choudhary286@outlook.com', 'Jaya', 'Choudhary', 'GGU', 'MBA',
+    'C17', '5594', 'Inactive',
+    'India', '919880845794', '911169323435',
+    '01-06-2026', '13:15', 'GMT+5:30',
+    'Grade Dispute (Learner Believes Marks Are Wrong) Agent',
+    '6a16dc78ba7c5d66b6c4d264',
   ],
   [
-    '2146798', 'ananya.iyer@example.com', 'Ananya', 'Iyer', 'GGU', 'MBA',
-    'C3', '1231', 'Active', 'United Kingdom', '919345678901',
-    '29-05-2026', '12:20', 'GMT+1',
-    'Deferral Request (Work or Personal Demands) Agent', '6a16dc61ba7c5d66b6c4d21b',
+    '6056777', 'aditya.mangla05@mail.com', 'Aditya', 'Mangla', 'GGU', 'MBA',
+    'C17', '5594', 'Inactive',
+    'India', '919891100178', '911169323435',
+    '01-06-2026', '13:30', 'GMT+5:30',
+    'Deferral Request (Work or Personal Demands) Agent',
+    '6a16dc61ba7c5d66b6c4d21b',
   ],
   [
-    '5627019', 'vikram.singh@example.com', 'Vikram', 'Singh', 'GGU', 'MBA',
-    'C1', '1234', 'Active', 'Singapore', '919988112233',
-    '30-05-2026', '18:00', 'SGT',
-    'Slow Support Response Agent', '6a16dc37ba7c5d66b6c4d1cb',
+    '6063085', 'durga.blr@yahoo.com', 'Durga', 'Varada', 'GGU', 'MBA',
+    'C17', '5594', 'Inactive',
+    'Hong Kong', '85295949234', '911169323435',
+    '01-06-2026', '15:45', 'SGT',
+    'Slow Support Response Agent',
+    '6a16dc37ba7c5d66b6c4d1cb',
   ],
   [
-    '2286745', 'siddharth.roy@example.com', 'Siddharth', 'Roy', 'GGU', 'MBA',
-    'C3', '1231', 'Active', 'Vietnam', '919210987654',
-    '30-05-2026', '18:30', 'GMT+7',
-    'Certificate and Degree Delivery Query Agent', '6a16d63dba7c5d66b6c4d10f',
+    '6107085', 'ali.swidos1@gmail.com', 'Mohammed', 'H', 'GGU', 'MBA',
+    'C17', '5594', 'Inactive',
+    'India', '919867233812', '911169323435',
+    '01-06-2026', '14:00', 'GMT+5:30',
+    'Certificate and Degree Delivery Query Agent',
+    '6a16d63dba7c5d66b6c4d10f',
   ],
   [
-    '6620189', 'manish.tiwari@example.com', 'Manish', 'Tiwari', 'GGU', 'MBA',
-    'C2', '6789', 'Active', 'Vietnam', '919076543212',
-    '29-05-2026', '14:00', 'GMT+7',
-    'Extension Request (Health or Personal Reasons) Agent', '6a16d626ba7c5d66b6c4d0c6',
-  ],
-  [
-    '5613476', 'partho.ghosh11@example.com', 'Partho', 'Ghosh', 'GGU', 'MBA',
-    'C3', '1231', 'Active', 'India', '919988112263',
-    '30-05-2026', '18:00', 'IST',
-    'New Batch Onboarding Call Agent', '6a16bd59ba7c5d66b6c4cee9',
-  ],
-  [
-    '5930286', 'tanushree.shee19@example.com', 'Tanushree', 'Shee', 'GGU', 'MBA',
-    'C1', '1234', 'Active', 'India', '919984776655',
-    '29-05-2026', '14:00', 'IST',
-    'Deferral Request (Work or Personal Demands) Agent', '6a16dc61ba7c5d66b6c4d21b',
+    '5506867', 'kush.bhojak755@outlook.com', 'Kush', 'Bhojak', 'GGU', 'MBA',
+    'C17', '5594', 'Inactive',
+    'India', '919824738809', '911169323435',
+    '01-06-2026', '14:30', 'GMT+5:30',
+    'Extension Request (Health or Personal Reasons) Agent',
+    '6a16d626ba7c5d66b6c4d0c6',
   ],
 ];
 
