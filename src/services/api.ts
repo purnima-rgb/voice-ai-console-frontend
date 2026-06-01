@@ -146,18 +146,22 @@ export async function fetchStats(): Promise<Stats> {
 // downloadUnifiedCSVForUpload(uploadId) instead.
 
 /**
- * Download the per-upload unified Voice AI CSV snapshot for a calling-data
- * upload. Each successful calling-data upload has its own immutable CSV;
- * pass that upload's ID here. Browser filename is set from the response's
- * Content-Disposition header when present.
+ * Download the per-upload unified Voice AI file for a calling-data upload.
+ * Format defaults to 'xlsx' — that's the format the Voice AI scheduler can
+ * parse correctly (date_of_call / time_of_call stored as Excel number cells,
+ * not text strings). 'csv' is also supported for human inspection.
  */
-export async function downloadUnifiedCSVForUpload(uploadId: string): Promise<void> {
+export async function downloadUnifiedForUpload(
+  uploadId: string,
+  format: 'xlsx' | 'csv' = 'xlsx'
+): Promise<void> {
   const token = localStorage.getItem('auth_token');
-  const res = await fetch(`${API_BASE_URL}/data/unified-csv/${uploadId}`, {
+  const endpoint = format === 'xlsx' ? 'unified-xlsx' : 'unified-csv';
+  const res = await fetch(`${API_BASE_URL}/data/${endpoint}/${uploadId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
-    let msg = 'Failed to download unified CSV';
+    let msg = 'Failed to download unified file';
     try {
       const body = await res.json();
       if (body?.error) msg = body.error;
@@ -165,8 +169,8 @@ export async function downloadUnifiedCSVForUpload(uploadId: string): Promise<voi
     throw new Error(msg);
   }
 
-  // Pull filename from Content-Disposition if the server provided one
-  let fileName = `unified-voice-ai-${uploadId}.csv`;
+  // Pull filename from Content-Disposition when the server provides one
+  let fileName = `unified-voice-ai-${uploadId}.${format}`;
   const cd = res.headers.get('Content-Disposition');
   const match = cd?.match(/filename="([^"]+)"/);
   if (match) fileName = match[1];
@@ -181,6 +185,10 @@ export async function downloadUnifiedCSVForUpload(uploadId: string): Promise<voi
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+/** Back-compat alias — older call sites passed no format and expected CSV-named output. */
+export const downloadUnifiedCSVForUpload = (uploadId: string) =>
+  downloadUnifiedForUpload(uploadId, 'xlsx');
 
 export async function downloadErrorReport(uploadId: string): Promise<void> {
   const token = localStorage.getItem('auth_token');
