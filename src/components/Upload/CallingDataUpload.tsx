@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { uploadCallingData, downloadErrorReport } from '../../services/api';
+import { uploadCallingData, downloadErrorReport, downloadUnifiedCSVForUpload } from '../../services/api';
 import { University, UploadResult } from '../../types';
 import Button from '../Common/Button';
 import FilterBar from './FilterBar';
@@ -244,10 +244,42 @@ export default function CallingDataUpload() {
                 Download Error Report
               </Button>
             )}
+            {result.success && result.unifiedCsvAvailable && (
+              <Button
+                variant="success"
+                size="md"
+                onClick={async () => {
+                  try {
+                    await downloadUnifiedCSVForUpload(result.uploadId);
+                  } catch (err) {
+                    setError((err as Error).message || 'Failed to download unified CSV.');
+                  }
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download Unified CSV
+              </Button>
+            )}
             <Button variant="secondary" size="md" onClick={handleReset}>
               Upload Another File
             </Button>
           </div>
+
+          {/* Unified CSV explainer */}
+          {result.success && result.unifiedCsvAvailable && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm text-emerald-800">
+              <p className="font-semibold mb-1">Unified Voice AI CSV ready</p>
+              <p className="text-xs text-emerald-700 leading-relaxed">
+                A snapshot CSV was generated from this upload's calling rows joined
+                with the current Student List and Grade Sheet data for {university} → {program}.
+                Each calling-data upload produces its own snapshot — this file
+                won't change even when future uploads add new data.
+              </p>
+            </div>
+          )}
 
           {/* Data preview */}
           {result.data.length > 0 && (

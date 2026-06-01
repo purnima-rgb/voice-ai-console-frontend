@@ -19,6 +19,12 @@ export interface UploadResult {
   errorRows: number;
   errors: ErrorRow[];
   data: Record<string, string>[];
+  /**
+   * True when a calling-data upload succeeded and the backend generated +
+   * stored a Voice AI unified-input CSV snapshot for it. Frontend uses this
+   * to decide whether to show the "Download Unified CSV" button.
+   */
+  unifiedCsvAvailable?: boolean;
 }
 
 export interface ErrorRow {

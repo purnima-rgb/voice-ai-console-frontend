@@ -162,6 +162,43 @@ export async function downloadUnifiedCSV(): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * Download the per-upload unified Voice AI CSV snapshot for a calling-data
+ * upload. Each successful calling-data upload has its own immutable CSV;
+ * pass that upload's ID here. Browser filename is set from the response's
+ * Content-Disposition header when present.
+ */
+export async function downloadUnifiedCSVForUpload(uploadId: string): Promise<void> {
+  const token = localStorage.getItem('auth_token');
+  const res = await fetch(`${API_BASE_URL}/data/unified-csv/${uploadId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    let msg = 'Failed to download unified CSV';
+    try {
+      const body = await res.json();
+      if (body?.error) msg = body.error;
+    } catch { /* not JSON, keep default */ }
+    throw new Error(msg);
+  }
+
+  // Pull filename from Content-Disposition if the server provided one
+  let fileName = `unified-voice-ai-${uploadId}.csv`;
+  const cd = res.headers.get('Content-Disposition');
+  const match = cd?.match(/filename="([^"]+)"/);
+  if (match) fileName = match[1];
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export async function downloadErrorReport(uploadId: string): Promise<void> {
   const token = localStorage.getItem('auth_token');
   const res = await fetch(`http://localhost:3001/api/upload/error-report/${uploadId}`, {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { fetchUploadHistory, downloadErrorReport } from '../../services/api';
+import { fetchUploadHistory, downloadErrorReport, downloadUnifiedCSVForUpload } from '../../services/api';
 import {
   University,
   UploadRecord,
@@ -295,16 +295,34 @@ export default function UploadHistory() {
                       </td>
                       <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap text-xs">{u.uploadedBy}</td>
                       <td className="px-4 py-2.5 whitespace-nowrap">
-                        {u.errorRows > 0 ? (
-                          <button
-                            onClick={() => downloadErrorReport(u.uploadId)}
-                            className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline"
-                          >
-                            Error report
-                          </button>
-                        ) : (
-                          <span className="text-xs text-gray-300">—</span>
-                        )}
+                        <div className="flex items-center gap-3">
+                          {u.errorRows > 0 && (
+                            <button
+                              onClick={() => downloadErrorReport(u.uploadId)}
+                              className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline"
+                            >
+                              Error report
+                            </button>
+                          )}
+                          {u.dataType === 'calling-data' && u.status === 'success' && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await downloadUnifiedCSVForUpload(u.uploadId);
+                                } catch (err) {
+                                  setError((err as Error).message || 'Failed to download unified CSV.');
+                                }
+                              }}
+                              className="text-xs text-emerald-600 hover:text-emerald-800 hover:underline"
+                              title="Download the unified Voice AI CSV snapshot generated when this upload landed"
+                            >
+                              Unified CSV
+                            </button>
+                          )}
+                          {u.errorRows === 0 && !(u.dataType === 'calling-data' && u.status === 'success') && (
+                            <span className="text-xs text-gray-300">—</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
