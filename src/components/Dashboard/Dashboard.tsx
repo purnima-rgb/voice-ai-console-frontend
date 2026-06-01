@@ -1,6 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { fetchStats, fetchUploadHistory } from '../../services/api';
+import {
+  fetchStats,
+  fetchUploadHistory,
+  downloadUnifiedCSVForUpload,
+} from '../../services/api';
 import { Stats, UploadRecord } from '../../types';
 
 const statusColors: Record<string, string> = {
@@ -26,20 +31,39 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [history, setHistory] = useState<UploadRecord[]>([]);
+  const [allCalling, setAllCalling] = useState<UploadRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [downloadErr, setDownloadErr] = useState('');
 
   useEffect(() => {
-    Promise.all([fetchStats(), fetchUploadHistory()])
-      .then(([s, h]) => {
+    // The history endpoint returns newest-first; pull the calling-data slice
+    // separately so we always have the latest calling-data upload available
+    // for the prominent "Latest Unified CSV" download card, regardless of
+    // what's in the most-recent-10 mixed-type list.
+    Promise.all([
+      fetchStats(),
+      fetchUploadHistory(),
+      fetchUploadHistory({ dataType: 'calling-data' }),
+    ])
+      .then(([s, h, c]) => {
         setStats(s);
         setHistory(h.uploads.slice(0, 10));
+        setAllCalling(c.uploads);
       })
       .catch((err) => {
         setError(err?.response?.data?.error || 'Failed to load dashboard data');
       })
       .finally(() => setLoading(false));
   }, []);
+
+  // Latest successful calling-data upload — its snapshot is the "current"
+  // Voice AI unified input file for the (university, program) it was uploaded
+  // under. Older successful uploads remain downloadable from Upload History.
+  const latestCalling = useMemo(
+    () => allCalling.find((u) => u.status === 'success'),
+    [allCalling]
+  );
 
   const statCards: StatCard[] = [
     {
@@ -114,6 +138,77 @@ export default function Dashboard() {
 
       {!loading && !error && (
         <>
+          {/* Latest Unified CSV — primary download surface for clients + team */}
+          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-6 text-white shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex-1 min-w-[280px]">
+                <div className="flex items-center gap-2 text-emerald-100 text-xs font-semibold uppercase tracking-wide mb-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Voice AI Unified Input
+                </div>
+                {latestCalling ? (
+                  <>
+                    <h3 className="text-lg font-bold">
+                      Latest unified CSV — {latestCalling.university || 'all'} / {latestCalling.program || 'all'}
+                    </h3>
+                    <p className="text-emerald-50 text-sm mt-1">
+                      Generated from <span className="font-medium">{latestCalling.fileName}</span>
+                      {' '}— {latestCalling.validRows} call rows, joined with the current
+                      Student List and Grade Sheet. Uploaded{' '}
+                      {new Date(latestCalling.uploadedAt).toLocaleString()} by {latestCalling.uploadedBy}.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-bold">No unified CSV yet</h3>
+                    <p className="text-emerald-50 text-sm mt-1">
+                      Upload calling data first — a Voice AI unified-input CSV is generated
+                      automatically with each successful calling-data upload.
+                    </p>
+                  </>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {latestCalling && (
+                  <button
+                    onClick={async () => {
+                      setDownloadErr('');
+                      try {
+                        await downloadUnifiedCSVForUpload(latestCalling.uploadId);
+                      } catch (e) {
+                        setDownloadErr((e as Error).message || 'Download failed.');
+                      }
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white text-emerald-700 rounded-lg
+                      text-sm font-semibold hover:bg-emerald-50 transition-colors shadow-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download Latest Unified CSV
+                  </button>
+                )}
+                <Link
+                  to="/upload-history?dataType=calling-data"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-700/40 text-white
+                    border border-white/30 rounded-lg text-sm font-medium hover:bg-emerald-700/60
+                    transition-colors"
+                >
+                  All snapshots
+                </Link>
+              </div>
+            </div>
+            {downloadErr && (
+              <div className="mt-3 px-3 py-2 bg-red-500/20 border border-red-300 rounded-lg text-sm">
+                {downloadErr}
+              </div>
+            )}
+          </div>
+
           {/* Stats grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             {statCards.map((card) => (
