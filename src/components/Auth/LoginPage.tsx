@@ -30,12 +30,6 @@ export default function LoginPage() {
     }
   };
 
-  const demoUsers = [
-    { email: 'admin@voiceai.com', password: 'Admin@123', role: 'System Administrator', color: 'indigo' },
-    { email: 'manager@voiceai.com', password: 'Manager@123', role: 'Data Manager', color: 'blue' },
-    { email: 'agent@voiceai.com', password: 'Agent@123', role: 'Support Agent', color: 'cyan' },
-  ];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-indigo-800 to-blue-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -112,36 +106,6 @@ export default function LoginPage() {
               Sign in
             </Button>
           </form>
-
-          {/* Demo accounts */}
-          <div className="mt-8 pt-6 border-t border-gray-100">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-              Demo Accounts
-            </p>
-            <div className="space-y-2">
-              {demoUsers.map((u) => (
-                <button
-                  key={u.email}
-                  type="button"
-                  onClick={() => { setEmail(u.email); setPassword(u.password); }}
-                  className="w-full text-left px-3 py-2 rounded-lg border border-gray-200 hover:border-indigo-300
-                    hover:bg-indigo-50 transition-colors group"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-gray-700 group-hover:text-indigo-700">
-                        {u.role}
-                      </p>
-                      <p className="text-xs text-gray-400">{u.email}</p>
-                    </div>
-                    <span className="text-xs text-gray-300 group-hover:text-indigo-400">
-                      {u.password}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         <p className="text-center text-indigo-200 text-xs mt-6">
