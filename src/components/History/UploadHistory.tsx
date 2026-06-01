@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { fetchUploadHistory, downloadErrorReport, downloadUnifiedCSVForUpload } from '../../services/api';
+import {
+  fetchUploadHistory,
+  downloadErrorReport,
+  downloadUnifiedCSVForUpload,
+  downloadRawFileForUpload,
+} from '../../services/api';
 import {
   University,
   UploadRecord,
@@ -322,9 +327,19 @@ export default function UploadHistory() {
                               Unified CSV
                             </button>
                           )}
-                          {u.errorRows === 0 && !(u.dataType === 'calling-data' && u.status === 'success') && (
-                            <span className="text-xs text-gray-300">—</span>
-                          )}
+                          <button
+                            onClick={async () => {
+                              try {
+                                await downloadRawFileForUpload(u.uploadId);
+                              } catch (err) {
+                                setError((err as Error).message || 'Failed to download original file.');
+                              }
+                            }}
+                            className="text-xs text-gray-600 hover:text-gray-800 hover:underline"
+                            title="Download the original uploaded file as the client sent it (from Supabase Storage)"
+                          >
+                            Original
+                          </button>
                         </div>
                       </td>
                     </tr>

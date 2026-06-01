@@ -190,6 +190,41 @@ export async function downloadUnifiedForUpload(
 export const downloadUnifiedCSVForUpload = (uploadId: string) =>
   downloadUnifiedForUpload(uploadId, 'xlsx');
 
+/**
+ * Download the original raw uploaded file (CSV or XLSX) for a given upload.
+ * Backend fetches it from Supabase Storage and streams it back with the
+ * proper Content-Type / Content-Disposition.
+ */
+export async function downloadRawFileForUpload(uploadId: string): Promise<void> {
+  const token = localStorage.getItem('auth_token');
+  const res = await fetch(`${API_BASE_URL}/upload/raw-file/${uploadId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    let msg = 'Failed to download raw file';
+    try {
+      const body = await res.json();
+      if (body?.error) msg = body.error;
+    } catch { /* not JSON */ }
+    throw new Error(msg);
+  }
+
+  let fileName = `raw-upload-${uploadId}`;
+  const cd = res.headers.get('Content-Disposition');
+  const match = cd?.match(/filename="([^"]+)"/);
+  if (match) fileName = match[1];
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export async function downloadErrorReport(uploadId: string): Promise<void> {
   const token = localStorage.getItem('auth_token');
   const res = await fetch(`http://localhost:3001/api/upload/error-report/${uploadId}`, {
