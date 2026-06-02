@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { uploadCallingData, downloadErrorReport, downloadUnifiedCSVForUpload } from '../../services/api';
+import { uploadCallingData, downloadErrorReport, downloadUnifiedForUpload } from '../../services/api';
 import { University, UploadResult } from '../../types';
 import Button from '../Common/Button';
 import FilterBar from './FilterBar';
@@ -246,23 +246,42 @@ export default function CallingDataUpload() {
               </Button>
             )}
             {result.success && result.unifiedCsvAvailable && (
-              <Button
-                variant="success"
-                size="md"
-                onClick={async () => {
-                  try {
-                    await downloadUnifiedCSVForUpload(result.uploadId);
-                  } catch (err) {
-                    setError((err as Error).message || 'Failed to download unified CSV.');
-                  }
-                }}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Download Unified File
-              </Button>
+              <>
+                <Button
+                  variant="success"
+                  size="md"
+                  onClick={async () => {
+                    try {
+                      await downloadUnifiedForUpload(result.uploadId, 'xlsx');
+                    } catch (err) {
+                      setError((err as Error).message || 'Failed to download unified XLSX.');
+                    }
+                  }}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download Unified XLSX
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={async () => {
+                    try {
+                      await downloadUnifiedForUpload(result.uploadId, 'csv');
+                    } catch (err) {
+                      setError((err as Error).message || 'Failed to download unified CSV.');
+                    }
+                  }}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download Unified CSV
+                </Button>
+              </>
             )}
             <Button variant="secondary" size="md" onClick={handleReset}>
               Upload Another File

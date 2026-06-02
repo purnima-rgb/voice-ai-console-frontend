@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   fetchUploadHistory,
   downloadErrorReport,
-  downloadUnifiedCSVForUpload,
+  downloadUnifiedForUpload,
   downloadRawFileForUpload,
 } from '../../services/api';
 import {
@@ -313,19 +313,34 @@ export default function UploadHistory() {
                             </button>
                           )}
                           {u.dataType === 'calling-data' && u.status === 'success' && (
-                            <button
-                              onClick={async () => {
-                                try {
-                                  await downloadUnifiedCSVForUpload(u.uploadId);
-                                } catch (err) {
-                                  setError((err as Error).message || 'Failed to download unified CSV.');
-                                }
-                              }}
-                              className="text-xs text-emerald-600 hover:text-emerald-800 hover:underline"
-                              title="Download the unified Voice AI CSV snapshot generated when this upload landed"
-                            >
-                              Unified CSV
-                            </button>
+                            <>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await downloadUnifiedForUpload(u.uploadId, 'xlsx');
+                                  } catch (err) {
+                                    setError((err as Error).message || 'Failed to download unified XLSX.');
+                                  }
+                                }}
+                                className="text-xs text-emerald-600 hover:text-emerald-800 hover:underline"
+                                title="Download the unified Voice AI XLSX snapshot (scheduler-ready format)"
+                              >
+                                Unified XLSX
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await downloadUnifiedForUpload(u.uploadId, 'csv');
+                                  } catch (err) {
+                                    setError((err as Error).message || 'Failed to download unified CSV.');
+                                  }
+                                }}
+                                className="text-xs text-emerald-600 hover:text-emerald-800 hover:underline"
+                                title="Download the unified Voice AI CSV snapshot (human-readable)"
+                              >
+                                Unified CSV
+                              </button>
+                            </>
                           )}
                           <button
                             onClick={async () => {
