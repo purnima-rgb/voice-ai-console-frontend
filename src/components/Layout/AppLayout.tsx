@@ -11,6 +11,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/data-view': 'View Data',
   '/upload-history': 'Upload History',
   '/agent-mapping': 'Agent Mapping',
+  '/audit-log': 'Audit Log',
 };
 
 export default function AppLayout() {

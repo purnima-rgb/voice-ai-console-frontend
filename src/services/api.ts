@@ -141,6 +141,42 @@ export async function fetchStats(): Promise<Stats> {
   return res.data;
 }
 
+export type AuditEventType =
+  | 'upload'
+  | 'unified_generated'
+  | 's3_archived'
+  | 'scheduler_notified';
+
+export interface AuditEvent {
+  id: string;
+  eventType: AuditEventType;
+  dataType?: 'student-list' | 'grade-sheet' | 'calling-data';
+  uploadId: string;
+  university?: string;
+  program?: string;
+  fileName?: string;
+  actorEmail?: string;
+  actorRole?: string;
+  status: 'success' | 'failed';
+  detail?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export async function fetchAuditLog(filters?: {
+  eventType?: AuditEventType;
+  university?: string;
+  program?: string;
+  limit?: number;
+}): Promise<{ events: AuditEvent[]; total: number }> {
+  const params: Record<string, string> = {};
+  if (filters?.eventType)  params.eventType  = filters.eventType;
+  if (filters?.university) params.university = filters.university;
+  if (filters?.program)    params.program    = filters.program;
+  if (filters?.limit)      params.limit      = String(filters.limit);
+  const res = await api.get('/data/audit', { params });
+  return res.data;
+}
+
 // downloadUnifiedCSV (legacy aggregate) removed — per-upload snapshots are
 // now the canonical way to fetch the Voice AI unified input file. Use
 // downloadUnifiedCSVForUpload(uploadId) instead.
