@@ -1,274 +1,150 @@
-import { useMemo, useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useMemo, useState } from 'react';
 import Button from '../Common/Button';
+import {
+  AgentUseCase,
+  AGENT_USE_CASES,
+  AGENT_DISPLAY_NAMES,
+  AGENT_IDS,
+  AGENT_OPTIONAL_COLUMNS,
+  AGENT_SPECIFIC_COLUMNS,
+} from '../../types';
 
 /**
  * Reference data screen.
  *
- * Shows the expected layout + sample rows for both Student List and Grade
- * Sheet uploads, with each column visually marked as mandatory or optional.
- * Clients use this as a template when preparing their own files.
+ * Shows the finalized input data format for each of the 5 Voice AI agents
+ * currently running live campaigns (GGU / MBA). Source: upGrad Input Data
+ * Format Finalization.xlsx (shared by client). Clients use this as a
+ * template when preparing the pre-formatted file they upload for each
+ * agent/use case.
  *
- * Both data types use the "opt-out" validation model: every column present
- * in the uploaded file is required EXCEPT those listed as optional. Column
- * names vary across MBA / DBA / GGU ET, but the optional set stays fixed.
+ * Column order matches the finalized format exactly: the 11 mandatory
+ * unified columns, then the 3 common optional columns (Email, Program Name,
+ * Cohort ID), then the agent-specific columns. Mandatory columns are
+ * strictly validated on upload; optional + agent-specific columns are
+ * merged into the unified file's user_metadata JSON.
  */
 
-// ─────────────────────────────────────────────────────────────────────────────
-//   Student List dataset
-// ─────────────────────────────────────────────────────────────────────────────
-
-const STUDENT_OPTIONAL = new Set([
-  'Last Name',
-  'Prism User ID',
-  'GGU User ID',
-  'GGU Email',
-  'Region',
-  'Concentration',
-]);
-
-/** Columns whose values should be Excel-text-formatted (long digit strings). */
-const STUDENT_TEXT_COLS = new Set([
-  'Contact',
-  'User ID',
-  'GGU User ID',
-  'Prism User ID',
-]);
-
-const STUDENT_HEADERS = [
-  'Email', 'First Name', 'Last Name', 'User ID', 'Prism User ID',
-  'GGU User ID', 'GGU Email', 'Cohort #', 'Cohort ID', 'Launch Month',
-  'GGU Term Id', 'Batch', 'Status', 'Country of  Residence', 'Region',
-  'Contact', 'Package Key', 'Status Details', 'Cohort Status', 'Concentration',
-  'Learner Type',
-];
-
-const STUDENT_ROWS: string[][] = [
-  [
-    'naveena.manoj03@mail.com', 'Naveena', 'Manoj', '6032552', '', '622263',
-    'nmanoj1@my.ggu.edu', 'C17', '5594', '24/10', '22/UU', 'Domestic',
-    'Inactive', 'India', 'Tier 1', '918928220913', 'masters-management-ggu-pp',
-    'Graduated', 'Closed', 'MBA.MKT.WDW', 'Fresh',
-  ],
-  [
-    'jaya.choudhary286@outlook.com', 'Jaya', 'Choudhary', '6017168', '', '622266',
-    'jchoudhary889@my.ggu.edu', 'C17', '5594', '24/10', '22/UU', 'Domestic',
-    'Inactive', 'India', 'Tier 1', '916300063921', 'master-v1-manag-ggu-psv2',
-    'Deferred Out', 'Closed', 'MBA.MKT.WDW', 'Fresh',
-  ],
-  [
-    'aditya.mangla05@mail.com', 'Aditya', 'Mangla', '6056777', '', '622252',
-    'amangla1@my.ggu.edu', 'C17', '5594', '24/10', '22/FU', 'Domestic',
-    'Inactive', 'India', 'Tier 1', '919891100178', 'masters-management-ggu-pp',
-    'Deferred Out', 'Closed', 'MBA.ADL.WDW', 'Fresh',
-  ],
-  [
-    'durga.blr@yahoo.com', 'Durga', 'Varada', '6063085', '', '622267',
-    'dvarada2@my.ggu.edu', 'C17', '5594', '24/10', '23/WU', 'International',
-    'Inactive', 'Hong Kong', 'APAC', '85295949234', 'mba-globallmba-ggu-pp',
-    'Graduated', 'Closed', 'MBA.ADL.WDW', 'Fresh',
-  ],
-  [
-    'ali.swidos1@gmail.com', 'Mohammed', 'H', '6107085', '', '622248',
-    'malisobhani1@my.ggu.edu', 'C17', '5594', '24/10', '23/SU', 'Domestic',
-    'Inactive', 'India', 'Tier 1', '919867233812', 'master-v2-manag-ggu-psv2',
-    'Graduated', 'Closed', 'MBA.FIN.WDW', 'Fresh',
-  ],
-  [
-    'eden.lemy@mail.com', 'My', 'Le', '6112677', '', '622231',
-    'mle1@my.ggu.edu', 'C17', '5594', '24/10', '24/10', 'International',
-    'Inactive', 'Vietnam', 'Vietnam', '84869717452', 'mba-globallmba-ggu-pp',
-    'Graduated', 'Closed', 'MBA.ADL.WDW', 'Fresh',
-  ],
-  [
-    'nimmi.n99@mail.com', 'Nimmi', 'Nair', '6168690', '', '622204',
-    'nnair1@my.ggu.edu', 'C17', '5594', '24/10', '24/10', 'Domestic',
-    'Inactive', 'Qatar', 'Tier 1', '919650317228', 'mba-globallmba-ggu-pp',
-    'Graduated', 'Closed', 'MBA.BUSA.WDW', 'Fresh',
-  ],
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-//   Grade Sheet dataset
-//
-//   The displayed table shows the FLAT composite headers our parser produces
-//   ("Fundamentals of Business - Grade", "Fundamentals of Business - GPA", …).
-//   The downloaded CSV uses the original GGU multi-row layout (title row +
-//   summary header row + course-name row + main header row) so the client
-//   can use it directly as a template in Excel.
-// ─────────────────────────────────────────────────────────────────────────────
-
-const GRADE_OPTIONAL_BASE = new Set([
-  'Slot / Concentration',
-  'GGU Learner Status',
-  'Last Name',
-]);
-
-const GRADE_TEXT_COLS = new Set([
-  'GGU User ID',
-  'User ID',
-]);
-
-const GRADE_COURSES = [
-  'Fundamentals of Business',
-  'Management and Leadership',
-  'Marketing Management',
-  'Foundations of Business Analytics',
-  'Corporate Finance',
-  'Teamwork and Organization',
-  'Information Technologies',
-  'Operations and Supply Chain',
-  'Context of Business',
-  'Strategic analysis and design',
-  'Business Plan',
-  'Concentration 1',
-  'Concentration 2',
-  'Concentration 3',
-];
-
-const GRADE_HEADERS_BASE = [
-  'GGU Student Email ID', 'Email', 'GGU User ID', 'User ID', 'First Name',
-  'Last Name', 'GGU Entry Term', 'Cohort ID', 'Slot / Concentration', 'Batch',
-  'GGU Learner Status', 'Status', 'Course Completed', 'Overall CGPA',
-  'Courses Incomplete',
-];
-
-const GRADE_HEADERS = [
-  ...GRADE_HEADERS_BASE,
-  ...GRADE_COURSES.flatMap((c) => [`${c} - Grade`, `${c} - GPA`]),
-];
-
-/**
- * All per-course Grade/GPA cells can legitimately be empty (e.g. a student
- * hasn't taken Concentration 3 yet). Treat them as optional in the visual
- * legend too — matches what the backend validator does.
- */
-const GRADE_OPTIONAL = new Set<string>([
-  ...GRADE_OPTIONAL_BASE,
-  ...GRADE_COURSES.flatMap((c) => [`${c} - Grade`, `${c} - GPA`]),
-]);
-
-const GRADE_ROWS: string[][] = [
-  [
-    'jchoudhary889@my.ggu.edu', 'jaya.choudhary286@outlook.com', '622266', '6017168', 'Jaya', 'Choudhary',
-    '24/10', '5594', '', 'Domestic', '', 'Inactive', '13', '3.31', '1',
-    'B', '3', 'A-', '3.7', 'B-', '2.7', 'A-', '3.7', 'B+', '3.3', 'C-', '1.7',
-    'A', '4', 'B+', '3.3', 'B', '3', 'A', '4', 'A+', '4', 'B+', '3.3',
-    'D', '1', 'B+', '3.3',
-  ],
-  [
-    'amangla1@my.ggu.edu', 'aditya.mangla05@mail.com', '622252', '6056777', 'Aditya', 'Mangla',
-    '24/10', '5594', '', 'Domestic', '', 'Inactive', '0', '0.11', '14',
-    'F', '0', 'F', '0', 'F', '0', 'D+', '1.3', 'F', '0', 'F', '0',
-    'IF', '0', 'F', '0', 'F', '0', 'F', '0', 'F', '0', 'F', '0',
-    'F', '0', 'F', '0',
-  ],
-  [
-    'rtolani2@my.ggu.edu', 'rishi.tolani02@outlook.com', '622262', '6099025', 'Rishi', 'Tolani',
-    '24/10', '5594', '', 'Domestic', '', 'Inactive', '9', '2.5', '5',
-    'A+', '4', 'A', '4', 'C+', '2.3', 'B', '3', 'F', '0', 'F', '0',
-    'IF', '0', 'A', '4', 'B', '3', 'B', '3', 'A+', '4', 'B-', '2.7',
-    'D', '1', 'F', '0',
-  ],
-  [
-    'thinglawala1@my.ggu.edu', 'taher.hinglawala88@outlook.com', '622245', '6115463', 'Taher', '',
-    '24/10', '5594', '', 'Domestic', '', 'Inactive', '11', '3.16', '3',
-    'A', '4', 'A', '4', 'B-', '2.7', 'B', '3', 'A-', '3.7', 'A-', '3.7',
-    'B', '3', 'C-', '1.7', 'A-', '3.7', 'A-', '3.7', 'A', '4', 'D-', '0.7',
-    'F', '0', 'D', '1',
-  ],
-  [
-    'rhazra1@my.ggu.edu', 'rajib.sap1993@gmail.com', '622269', '6101277', 'Rajib', 'Hazra',
-    '24/10', '5594', '', 'Domestic', '', 'Inactive', '0', '0', '11',
-    'F', '0', 'F', '0', 'F', '0', 'F', '0', 'F', '0', 'F', '0',
-    'F', '0', 'F', '0', 'F', '0', 'F', '0', 'F', '0', '', '',
-    '', '', '', '',
-  ],
-  [
-    'mkasare1@my.ggu.edu', 'mihir.kasare@mail.com', '622270', '5798245', 'Mihir', 'Kasare',
-    '24/10', '5594', '', 'Domestic', '', 'Inactive', '13', '3.29', '0',
-    'A-', '3.7', 'A-', '3.7', 'C-', '1.7', 'A', '4', 'B+', '3.3', 'A-', '3.7',
-    'C-', '1.7', 'B-', '2.7', 'A', '4', 'A', '4', 'A', '4', 'B', '3',
-    '', '', 'B', '3',
-  ],
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-//   Calling Data dataset
-//
-//   ALL columns are mandatory — no optional fields. Column names match the
-//   GGU calling-data sample CSV exactly.
-// ─────────────────────────────────────────────────────────────────────────────
-
-const CALLING_OPTIONAL = new Set<string>(); // none
-
-const CALLING_TEXT_COLS = new Set([
-  'User ID',
+const COMMON_HEADERS = [
+  'user_id',
+  'Email',
+  'user_first_name',
+  'user_last_name',
   'user_contact',
   'from_number',
+  'user_country_of_residence',
+  'timezone',
+  'date_of_call',
+  'time_of_call',
+  'reason',
+  'Program Name',
   'agent_id',
-]);
-
-const CALLING_HEADERS = [
-  'User ID', 'Email ID', 'First Name', 'Last Name', 'University', 'Program',
-  'Cohort #', 'Cohort ID', 'Status',
-  'user_country_of_residence', 'user_contact', 'from_number',
-  'date_of_call', 'time_of_call', 'timezone', 'reason', 'agent_id',
+  'Cohort ID',
 ];
 
-// Sample rows use real GGU MBA User IDs (6032552 Naveena, 6017168 Jaya, …)
-// so the unified-CSV join with the Student List / Grade Sheet actually
-// populates user_metadata when an admin runs through the demo.
-const CALLING_ROWS: string[][] = [
-  [
-    '6032552', 'naveena.manoj03@mail.com', 'Naveena', 'Manoj', 'GGU', 'MBA',
-    'C17', '5594', 'Inactive',
-    'India', '919222226468', '911169323435',
-    '01-06-2026', '13:15', 'GMT+5:30',
-    'Missed Assignment Deadline / Reattempt Window Agent',
-    '6a16dd14ba7c5d66b6c4d2b4',
+/** Columns whose values should be Excel-text-formatted (long digit strings). */
+const TEXT_COLS = new Set(['user_id', 'user_contact', 'from_number', 'agent_id']);
+
+function buildHeaders(agent: AgentUseCase): string[] {
+  return [...COMMON_HEADERS, ...AGENT_SPECIFIC_COLUMNS[agent]];
+}
+
+const AGENT_DESCRIPTIONS: Record<AgentUseCase, string> = {
+  'live-session-reminder':
+    'Reminds students of an upcoming live session. Upload one row per student per session — the Session Date/Start/End Time columns tell the agent when the class happens.',
+  'deferral-request':
+    'Follows up with students who requested a program deferral due to work or personal demands, referencing the course they deferred from and next batch details.',
+  'missed-assignment-deadline':
+    'Calls students who missed an assignment deadline to offer an extension, referencing the original deadline and the extended one.',
+  'new-program-onboarding':
+    'Walks new students through onboarding milestones — orientation, welcome webinar, batch launch, and their first graded course and live session.',
+  'deadline-reminder':
+    'Reminds students of an approaching assignment deadline for a specific course before it passes.',
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+//   Sample rows — clean, correctly-formatted examples for each agent.
+//   from_number keeps its leading zero and user_contact is a full digit
+//   string (no scientific notation) — the two formats most often corrupted
+//   when the source Excel column isn't formatted as Text.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const AGENT_SAMPLE_ROWS: Record<AgentUseCase, string[][]> = {
+  'live-session-reminder': [
+    [
+      '6515104', 'vignesh.ps@example.com', 'Vignesh', 'P S', '919944211234', '01169323435',
+      'India', 'Asia/Kolkata', '2026-07-11', '21:00:00', 'Live Session Reminder', 'GGU MBA',
+      AGENT_IDS['live-session-reminder'], 'ENG-C1',
+      'Concentration 3 - Web and Social Network Analytics', 'Sat', '2026-07-11',
+      '21:00:00', '22:00:00', 'Live Session', 'Dr. Tanisha Medewala',
+      'Concentration 3 - Web and Social Network Analytics',
+    ],
+    [
+      '5102481', 'rishabh.mudgal@example.com', 'Rishabh', 'Mudgal', '919872211234', '01169323435',
+      'India', 'Asia/Kolkata', '2026-07-11', '15:30:00', 'Live Session Reminder', 'GGU MBA',
+      AGENT_IDS['live-session-reminder'], 'ENG-C1',
+      'Concentration 3 - Strategic Leadership', 'Sat', '2026-07-11',
+      '15:30:00', '17:00:00', 'Live Session', 'Dr. Ranna Bhatt',
+      'Concentration 3 - Strategic Leadership',
+    ],
   ],
-  [
-    '6017168', 'jaya.choudhary286@outlook.com', 'Jaya', 'Choudhary', 'GGU', 'MBA',
-    'C17', '5594', 'Inactive',
-    'India', '919880845794', '911169323435',
-    '01-06-2026', '13:15', 'GMT+5:30',
-    'Grade Dispute (Learner Believes Marks Are Wrong) Agent',
-    '6a16dc78ba7c5d66b6c4d264',
+  'deferral-request': [
+    [
+      '6367723', 'thu.hien@example.com', 'Thu', 'Hien', '84986074271', '01169323435',
+      'Vietnam', 'Asia/Ho_Chi_Minh', '2026-07-07', '11:15:00', 'Deferral Request', 'GGU MBA',
+      AGENT_IDS['deferral-request'], 'ENG-C1',
+      'Marketing Management', '2026-09-01', '25',
+    ],
+    [
+      '6378485', 'hoang.bui@example.com', 'Hoang', 'Bui', '84378498748', '01169323435',
+      'Vietnam', 'Asia/Ho_Chi_Minh', '2026-07-07', '11:15:00', 'Deferral Request', 'GGU MBA',
+      AGENT_IDS['deferral-request'], 'ENG-C2',
+      'Corporate Finance', '2026-09-01', '25',
+    ],
   ],
-  [
-    '6056777', 'aditya.mangla05@mail.com', 'Aditya', 'Mangla', 'GGU', 'MBA',
-    'C17', '5594', 'Inactive',
-    'India', '919891100178', '911169323435',
-    '01-06-2026', '13:30', 'GMT+5:30',
-    'Deferral Request (Work or Personal Demands) Agent',
-    '6a16dc61ba7c5d66b6c4d21b',
+  'missed-assignment-deadline': [
+    [
+      '6367723', 'thu.hien@example.com', 'Thu', 'Hien', '84986074271', '01169323435',
+      'Vietnam', 'Asia/Ho_Chi_Minh', '2026-07-24', '11:15:00', 'Missed Assignment Deadline', 'GGU MBA',
+      AGENT_IDS['missed-assignment-deadline'], 'ENG-C1',
+      'Course Assignment 2', '2026-07-20', '2026-07-27',
+    ],
+    [
+      '6378485', 'hoang.bui@example.com', 'Hoang', 'Bui', '84378498748', '01169323435',
+      'Vietnam', 'Asia/Ho_Chi_Minh', '2026-07-24', '11:15:00', 'Missed Assignment Deadline', 'GGU MBA',
+      AGENT_IDS['missed-assignment-deadline'], 'ENG-C2',
+      'Course Assignment 3', '2026-07-21', '2026-07-28',
+    ],
   ],
-  [
-    '6063085', 'durga.blr@yahoo.com', 'Durga', 'Varada', 'GGU', 'MBA',
-    'C17', '5594', 'Inactive',
-    'Hong Kong', '85295949234', '911169323435',
-    '01-06-2026', '15:45', 'SGT',
-    'Slow Support Response Agent',
-    '6a16dc37ba7c5d66b6c4d1cb',
+  'new-program-onboarding': [
+    [
+      '6367723', 'thu.hien@example.com', 'Thu', 'Hien', '84986074271', '01169323435',
+      'Vietnam', 'Asia/Ho_Chi_Minh', '2026-07-10', '11:15:00', 'New Program Onboarding', 'GGU MBA',
+      AGENT_IDS['new-program-onboarding'], 'ENG-C3',
+      '2026-07-11', '2026-07-12', '2026-07-15', 'Marketing Management', '2026-07-15', '2026-08-19',
+    ],
+    [
+      '6378485', 'hoang.bui@example.com', 'Hoang', 'Bui', '84378498748', '01169323435',
+      'Vietnam', 'Asia/Ho_Chi_Minh', '2026-07-10', '11:15:00', 'New Program Onboarding', 'GGU MBA',
+      AGENT_IDS['new-program-onboarding'], 'ENG-C4',
+      '2026-07-18', '2026-07-19', '2026-07-22', 'Corporate Finance', '2026-07-22', '2026-08-26',
+    ],
   ],
-  [
-    '6107085', 'ali.swidos1@gmail.com', 'Mohammed', 'H', 'GGU', 'MBA',
-    'C17', '5594', 'Inactive',
-    'India', '919867233812', '911169323435',
-    '01-06-2026', '14:00', 'GMT+5:30',
-    'Certificate and Degree Delivery Query Agent',
-    '6a16d63dba7c5d66b6c4d10f',
+  'deadline-reminder': [
+    [
+      '6452211', 'yesmin.sultana@example.com', 'Yesmin', 'Sultana', '919101467587', '01169323435',
+      'India', 'Asia/Kolkata', '2026-07-23', '11:15:00', 'Deadline Reminder', 'GGU MBA',
+      AGENT_IDS['deadline-reminder'], 'ENG-C1',
+      'Concentration 1', 'Course Assignment', '2026-07-24',
+    ],
+    [
+      '3899817', 'ranjith.s@example.com', 'Ranjith', 'S', '918861916520', '01169323435',
+      'India', 'Asia/Kolkata', '2026-07-23', '11:15:00', 'Deadline Reminder', 'GGU MBA',
+      AGENT_IDS['deadline-reminder'], 'ENG-C1',
+      'Concentration 1', 'Course Assignment', '2026-07-24',
+    ],
   ],
-  [
-    '5506867', 'kush.bhojak755@outlook.com', 'Kush', 'Bhojak', 'GGU', 'MBA',
-    'C17', '5594', 'Inactive',
-    'India', '919824738809', '911169323435',
-    '01-06-2026', '14:30', 'GMT+5:30',
-    'Extension Request (Health or Personal Reasons) Agent',
-    '6a16d626ba7c5d66b6c4d0c6',
-  ],
-];
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 //   CSV helpers
@@ -281,94 +157,19 @@ function escapeCSV(v: string): string {
   return v;
 }
 
-/** Excel text-cell formula — see SampleData earlier notes. */
+/** Excel text-cell formula so long digit strings survive opening in Excel. */
 function excelTextCell(v: string): string {
   return `"=""${v.replace(/"/g, '""')}"""`;
 }
 
-function buildStudentCSV(): string {
-  const header = STUDENT_HEADERS.map(escapeCSV).join(',');
-  const lines = STUDENT_ROWS.map((row) =>
+function buildAgentCSV(agent: AgentUseCase): string {
+  const headers = buildHeaders(agent);
+  const header = headers.map(escapeCSV).join(',');
+  const lines = AGENT_SAMPLE_ROWS[agent].map((row) =>
     row.map((value, idx) => {
-      const col = STUDENT_HEADERS[idx];
+      const col = headers[idx];
       const v = value || '';
-      if (v && STUDENT_TEXT_COLS.has(col)) return excelTextCell(v);
-      return escapeCSV(v);
-    }).join(',')
-  );
-  return [header, ...lines].join('\n');
-}
-
-/**
- * Build a Grade Sheet CSV in the original GGU multi-row layout the client
- * already uses. Row 1: title + per-course Credit values. Row 2: summary
- * headers. Row 3: course names (one per Grade/GPA pair). Row 4: main field
- * headers. Rows 5+: data. This matches what GGU exports and what our
- * parseGradesheetCSV() expects.
- */
-function buildGradeSheetCSV(): string {
-  const numTrailingCols = GRADE_COURSES.length * 2; // 28
-  const blanks = (n: number) => Array(n).fill('').map(escapeCSV).join(',');
-
-  // Row 1: "MBA Master Grade Sheet" in col 1; "Credit" at col 14; "3" at every
-  // odd column starting from col 16 (one Credit per course, covering pair).
-  const row1Parts: string[] = ['MBA Master Grade Sheet'];
-  for (let i = 1; i < 13; i++) row1Parts.push('');
-  row1Parts.push('Credit');
-  row1Parts.push('');
-  for (let i = 0; i < GRADE_COURSES.length; i++) {
-    row1Parts.push('3');
-    row1Parts.push('');
-  }
-
-  // Row 2: summary header labels at col 13,14,15
-  const row2Parts: string[] = [];
-  for (let i = 0; i < 12; i++) row2Parts.push('');
-  row2Parts.push('Course Completed');
-  row2Parts.push('Overall CGPA');
-  row2Parts.push('Courses Incomplete');
-  row2Parts.push(blanks(numTrailingCols));
-
-  // Row 3: course names at col 16, 18, 20, ... (each pair Grade/GPA)
-  const row3Parts: string[] = [];
-  for (let i = 0; i < 15; i++) row3Parts.push('');
-  for (const course of GRADE_COURSES) {
-    row3Parts.push(escapeCSV(course));
-    row3Parts.push('');
-  }
-
-  // Row 4: main field headers
-  const row4Parts: string[] = GRADE_HEADERS_BASE.map(escapeCSV);
-  for (let i = 0; i < GRADE_COURSES.length; i++) {
-    row4Parts.push('Grade');
-    row4Parts.push('GPA');
-  }
-
-  const dataLines = GRADE_ROWS.map((row) =>
-    row.map((value, idx) => {
-      const col = GRADE_HEADERS[idx];
-      const v = value || '';
-      if (v && GRADE_TEXT_COLS.has(col)) return excelTextCell(v);
-      return escapeCSV(v);
-    }).join(',')
-  );
-
-  return [
-    row1Parts.join(','),
-    row2Parts.join(','),
-    row3Parts.join(','),
-    row4Parts.join(','),
-    ...dataLines,
-  ].join('\n');
-}
-
-function buildCallingCSV(): string {
-  const header = CALLING_HEADERS.map(escapeCSV).join(',');
-  const lines = CALLING_ROWS.map((row) =>
-    row.map((value, idx) => {
-      const col = CALLING_HEADERS[idx];
-      const v = value || '';
-      if (v && CALLING_TEXT_COLS.has(col)) return excelTextCell(v);
+      if (v && TEXT_COLS.has(col)) return excelTextCell(v);
       return escapeCSV(v);
     }).join(',')
   );
@@ -397,14 +198,7 @@ interface ReferenceTableProps {
   optionalNote: string;
   headers: string[];
   rows: string[][];
-  /** Full optional set — used for table-cell coloring + mandatory/optional counts. */
   optional: Set<string>;
-  /**
-   * Subset of optional column names to display as chips. If omitted, ALL
-   * optional headers are listed (good when the optional set is small). For
-   * the Grade Sheet — where we don't want to list every "<Course> - Grade"
-   * /"<Course> - GPA" — pass just the distinct base ones.
-   */
   optionalChips?: string[];
   onDownload: () => void;
   downloadLabel: string;
@@ -448,7 +242,7 @@ function ReferenceTable({
           </div>
           <div className="flex items-center gap-2">
             <span className="inline-block w-3 h-3 rounded-full bg-gray-400" />
-            <span className="text-sm text-gray-700">Optional</span>
+            <span className="text-sm text-gray-700">Optional / metadata</span>
             <span className="text-xs text-gray-400">({optionalHeaders.length} columns)</span>
           </div>
         </div>
@@ -461,12 +255,10 @@ function ReferenceTable({
         </Button>
       </div>
 
-      {/* Optional columns chips — omit the chip-list block when empty
-          (e.g. calling data has zero optional columns), but always keep
-          the explanatory note. */}
+      {/* Optional columns chips */}
       <div className="bg-white border border-gray-200 rounded-xl p-5">
         <h3 className="font-semibold text-gray-800 text-sm mb-3">
-          {chipHeaders.length > 0 ? 'Optional columns (can be left blank)' : 'Mandatory columns only'}
+          Optional / metadata columns (merged into user_metadata)
         </h3>
         {chipHeaders.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-3">
@@ -554,103 +346,56 @@ function ReferenceTable({
 
       <p className="text-xs text-gray-400 text-center">
         Hover any header for tooltip details. Mandatory cells must have values
-        on every row; missing values appear in the downloadable error report
-        after upload.
+        on every row; missing or malformed values appear in the downloadable
+        error report after upload.
       </p>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//   Page component with tabs
+//   Page component with tabs — one per finalized agent
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Tab = 'student-list' | 'grade-sheet' | 'calling-data';
-
-const TAB_LABEL: Record<Tab, string> = {
-  'student-list': 'Student List',
-  'grade-sheet':  'Grade Sheet',
-  'calling-data': 'Calling Data',
-};
-
 export default function SampleData() {
-  const { user } = useAuth();
+  const [tab, setTab] = useState<AgentUseCase>(AGENT_USE_CASES[0]);
 
-  // Support agents only see the Calling Data tab — they don't work with
-  // student / grade sheet data. Admins and data managers see all three.
-  const visibleTabs: Tab[] = useMemo(() => (
-    user?.role === 'support_agent'
-      ? ['calling-data']
-      : ['student-list', 'grade-sheet', 'calling-data']
-  ), [user?.role]);
-
-  const [tab, setTab] = useState<Tab>(visibleTabs[0]);
-
-  // Reset to first visible tab if role changes (e.g. login as different user)
-  useEffect(() => {
-    if (!visibleTabs.includes(tab)) setTab(visibleTabs[0]);
-  }, [visibleTabs, tab]);
+  const optionalSet = useMemo(
+    () => new Set([...AGENT_OPTIONAL_COLUMNS, ...AGENT_SPECIFIC_COLUMNS[tab]]),
+    [tab]
+  );
 
   return (
     <div className="space-y-6">
       {/* Tab switcher */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-        {visibleTabs.map((t) => (
+      <div className="flex flex-wrap gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+        {AGENT_USE_CASES.map((a) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={a}
+            onClick={() => setTab(a)}
             className={[
-              'px-5 py-2 rounded-lg text-sm font-medium transition-colors',
-              tab === t
+              'px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
+              tab === a
                 ? 'bg-white text-indigo-700 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700',
             ].join(' ')}
           >
-            {TAB_LABEL[t]}
+            {AGENT_DISPLAY_NAMES[a]}
           </button>
         ))}
       </div>
 
-      {tab === 'student-list' && (
-        <ReferenceTable
-          title="Student List — Reference"
-          description="Use this as a template when preparing your Student List CSV for upload. Column names vary across MBA / DBA / GGU ET, but the optional list stays the same. Any column not listed as optional is required — a missing value will appear in the error report."
-          optionalNote="These columns are the same across all courses (MBA, DBA, GGU ET). Even if your course adds new columns we haven't seen, they'll be treated as mandatory unless added to this list."
-          headers={STUDENT_HEADERS}
-          rows={STUDENT_ROWS}
-          optional={STUDENT_OPTIONAL}
-          onDownload={() => downloadCSV(buildStudentCSV(), 'GGU-MBA-Student-List-Sample.csv')}
-          downloadLabel="Download Sample CSV"
-        />
-      )}
-
-      {tab === 'grade-sheet' && (
-        <ReferenceTable
-          title="Grade Sheet — Reference"
-          description="Use this as a template when preparing your Grade Sheet CSV for upload. The file uses GGU's multi-row header layout (title + summary headers + course names + main field headers). Course names vary across MBA / DBA / GGU ET — the per-course Grade and GPA cells are always optional regardless of how many courses your program has."
-          optionalNote="The 3 columns above are always optional. In addition, every per-course Grade and GPA cell is optional — a student may not yet have attempted a course (e.g. blank Concentration 1/2/3 grades for someone still in progress). That rule applies to every program automatically; no need to list each course by name."
-          headers={GRADE_HEADERS}
-          rows={GRADE_ROWS}
-          optional={GRADE_OPTIONAL}
-          optionalChips={Array.from(GRADE_OPTIONAL_BASE)}
-          onDownload={() => downloadCSV(buildGradeSheetCSV(), 'GGU-MBA-Grade-Sheet-Sample.csv')}
-          downloadLabel="Download Sample CSV"
-        />
-      )}
-
-      {tab === 'calling-data' && (
-        <ReferenceTable
-          title="Calling Data — Reference"
-          description="Use this as a template when preparing your Calling Data CSV for upload. Every column is mandatory — empty values will be flagged in the error report. Look up the correct Agent ID for each Reason on the Agent Mapping page before uploading."
-          optionalNote="All columns in calling data are mandatory. There are no optional fields — every cell must have a value on every row."
-          headers={CALLING_HEADERS}
-          rows={CALLING_ROWS}
-          optional={CALLING_OPTIONAL}
-          optionalChips={[]}
-          onDownload={() => downloadCSV(buildCallingCSV(), 'GGU-MBA-Calling-Data-Sample.csv')}
-          downloadLabel="Download Sample CSV"
-        />
-      )}
+      <ReferenceTable
+        key={tab}
+        title={`${AGENT_DISPLAY_NAMES[tab]} — Reference`}
+        description={AGENT_DESCRIPTIONS[tab]}
+        optionalNote="Email, Program Name, Cohort ID, and every agent-specific column above are merged into the unified file's user_metadata JSON (not individually validated). The 11 mandatory columns must have a value on every row."
+        headers={buildHeaders(tab)}
+        rows={AGENT_SAMPLE_ROWS[tab]}
+        optional={optionalSet}
+        onDownload={() => downloadCSV(buildAgentCSV(tab), `GGU-MBA-${tab}-Sample.csv`)}
+        downloadLabel="Download Sample CSV"
+      />
     </div>
   );
 }

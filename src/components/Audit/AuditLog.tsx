@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { fetchAuditLog, AuditEvent, AuditEventType } from '../../services/api';
 
 /**
- * Audit Log — an append-only feed of every meaningful pipeline event:
- * each upload (student-list / grade-sheet / calling-data), each unified-file
- * generation, each S3 archive, and each scheduler notification.
+ * Audit Log — an append-only feed of every meaningful pipeline event: each
+ * agent-data upload, each unified-file generation, each S3 archive, and
+ * each scheduler notification.
  *
  * Admin-facing (system_admin + data_manager). Backed by GET /api/data/audit.
  */
@@ -49,9 +49,9 @@ function summarizeDetail(e: AuditEvent): string {
       return '';
     }
     case 'unified_generated':
-      return d.callingRows != null ? `${d.callingRows} calling rows` : '';
+      return d.rows != null ? `${d.rows} rows` : '';
     case 's3_archived':
-      return e.status === 'success' && d.csvKey ? String(d.csvKey) : String(d.error ?? '');
+      return e.status === 'success' && d.xlsxKey ? String(d.xlsxKey) : String(d.error ?? '');
     case 'scheduler_notified':
       return e.status === 'success'
         ? `HTTP ${d.httpStatus ?? 'ok'}`

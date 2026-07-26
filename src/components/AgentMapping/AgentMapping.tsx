@@ -3,9 +3,9 @@ import { fetchAgentMapping, AgentMapping } from '../../services/api';
 import Button from '../Common/Button';
 
 /**
- * Agent Mapping reference page — accessible to all roles, especially
- * useful for support agents preparing calling-data CSVs (they need to
- * paste the right Agent ID for each Reason).
+ * Agent Mapping reference page — accessible to all roles. Lists the
+ * finalized Voice AI agents and their IDs, used when preparing an
+ * agent-data upload file (the agent_id column must match one of these).
  *
  * Source list lives in the backend at config/agentMapping.ts. Update
  * that file when new agents are commissioned.
@@ -82,10 +82,10 @@ export default function AgentMappingPage() {
         <div className="flex-1">
           <h2 className="text-base font-semibold text-emerald-800">Agent Name &amp; ID Reference</h2>
           <p className="text-sm text-emerald-700 mt-1 leading-relaxed">
-            Look up the right <span className="font-semibold">Agent ID</span> for each
-            <span className="font-semibold"> Reason</span> when preparing your Calling Data CSV.
-            The Agent ID column in the calling-data file must match one of the values below
-            for the Voice AI system to route the call to the correct agent.
+            Look up the right <span className="font-semibold">Agent ID</span> when preparing
+            your agent-data upload file. The <span className="font-mono">agent_id</span> column
+            must match the value below for the agent you selected on the Upload screen — a
+            mismatch rejects the whole file.
           </p>
           <p className="text-sm text-emerald-700 mt-2">
             Use the search box to find an agent by name or ID. Click

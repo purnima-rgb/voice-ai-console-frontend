@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
 import {
   fetchUploadHistory,
   downloadErrorReport,
@@ -12,39 +11,37 @@ import {
   UploadRecord,
   UNIVERSITIES,
   UNIVERSITY_NAMES,
+  AgentUseCase,
+  AGENT_USE_CASES,
+  AGENT_DISPLAY_NAMES,
 } from '../../types';
 import Button from '../Common/Button';
 
 /**
- * Upload History — full audit trail of every file uploaded to the system,
- * tagged with (university, program, data type, uploader, timestamp).
+ * Upload History — full audit trail of every agent-data file uploaded to
+ * the system, tagged with (university, program, agent, uploader, timestamp).
  *
  * This is the visible proof that every client upload is persisted at our
- * end. Student list / grade sheet uploads happen infrequently; calling
- * data uploads happen frequently — this page handles both transparently.
- *
- * Filters narrow the list down to a single (university, program, dataType)
- * combination so it's easy to audit, for example, "all calling data
- * uploaded for GGU MBA in the last month".
+ * end. Filters narrow the list down to a single (university, program,
+ * agent) combination so it's easy to audit, for example, "all Deadline
+ * Reminder uploads for GGU MBA in the last month".
  */
 
-type DataTypeFilter = '' | 'student-list' | 'grade-sheet' | 'calling-data';
+type DataTypeFilter = '' | AgentUseCase;
 
-const DATA_TYPE_LABEL: Record<Exclude<DataTypeFilter, ''>, string> = {
-  'student-list': 'Student List',
-  'grade-sheet':  'Grade Sheet',
-  'calling-data': 'Calling Data',
-};
+const DATA_TYPE_LABEL: Record<string, string> = AGENT_DISPLAY_NAMES;
 
-const DATA_TYPE_BADGE: Record<Exclude<DataTypeFilter, ''>, string> = {
-  'student-list': 'bg-indigo-100 text-indigo-700',
-  'grade-sheet':  'bg-purple-100 text-purple-700',
-  'calling-data': 'bg-cyan-100 text-cyan-700',
+const DATA_TYPE_BADGE: Record<string, string> = {
+  'live-session-reminder': 'bg-teal-100 text-teal-700',
+  'deferral-request': 'bg-orange-100 text-orange-700',
+  'missed-assignment-deadline': 'bg-rose-100 text-rose-700',
+  'new-program-onboarding': 'bg-emerald-100 text-emerald-700',
+  'deadline-reminder': 'bg-sky-100 text-sky-700',
 };
 
 const STATUS_BADGE: Record<UploadRecord['status'], { bg: string; label: string }> = {
   success: { bg: 'bg-green-100 text-green-700', label: 'Saved' },
-  partial: { bg: 'bg-yellow-100 text-yellow-700', label: 'Partial (legacy)' },
+  partial: { bg: 'bg-yellow-100 text-yellow-700', label: 'Partial' },
   failed:  { bg: 'bg-red-100 text-red-700',     label: 'Rejected' },
 };
 
@@ -61,8 +58,6 @@ function formatDate(iso: string): string {
 }
 
 export default function UploadHistory() {
-  const { user } = useAuth();
-
   const [searchParams] = useSearchParams();
   const initialDataType = (searchParams.get('dataType') || '') as DataTypeFilter;
   const [dataType, setDataType]     = useState<DataTypeFilter>(initialDataType);
@@ -72,23 +67,10 @@ export default function UploadHistory() {
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState('');
 
-  // Support agents can only see calling-data history
-  const dataTypeOptions: Array<{ value: DataTypeFilter; label: string }> =
-    user?.role === 'support_agent'
-      ? [{ value: 'calling-data', label: 'Calling Data' }]
-      : [
-          { value: '',              label: 'All data types' },
-          { value: 'student-list',  label: 'Student List' },
-          { value: 'grade-sheet',   label: 'Grade Sheet' },
-          { value: 'calling-data',  label: 'Calling Data' },
-        ];
-
-  // Lock support-agents to calling-data on mount
-  useEffect(() => {
-    if (user?.role === 'support_agent' && dataType !== 'calling-data') {
-      setDataType('calling-data');
-    }
-  }, [user, dataType]);
+  const dataTypeOptions: Array<{ value: DataTypeFilter; label: string }> = [
+    { value: '', label: 'All agents' },
+    ...AGENT_USE_CASES.map((a) => ({ value: a, label: AGENT_DISPLAY_NAMES[a] })),
+  ];
 
   const load = async () => {
     setLoading(true);
@@ -138,11 +120,9 @@ export default function UploadHistory() {
         <div>
           <p className="text-sm font-semibold text-indigo-800">Upload Audit Trail</p>
           <p className="text-xs text-indigo-700 mt-0.5">
-            Every file you upload &mdash; Student List, Grade Sheet, or Calling Data &mdash;
-            is saved here with its University, Program, and timestamp.
-            Nothing is overwritten; older uploads remain for audit. The most
-            recent successful upload for each student is the active data
-            served to the Voice AI system.
+            Every agent-data file you upload is saved here with its University,
+            Program, Agent, and timestamp. Nothing is overwritten — each upload
+            gets its own immutable unified-file snapshot.
           </p>
         </div>
       </div>
@@ -152,14 +132,12 @@ export default function UploadHistory() {
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Filters</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Data Type</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Agent</label>
             <select
               value={dataType}
               onChange={(e) => setDataType(e.target.value as DataTypeFilter)}
-              disabled={user?.role === 'support_agent'}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white
-                focus:outline-none focus:ring-2 focus:ring-indigo-500
-                disabled:bg-gray-100 disabled:cursor-not-allowed"
+                focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               {dataTypeOptions.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -312,35 +290,20 @@ export default function UploadHistory() {
                               Error report
                             </button>
                           )}
-                          {u.dataType === 'calling-data' && u.status === 'success' && (
-                            <>
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    await downloadUnifiedForUpload(u.uploadId, 'xlsx');
-                                  } catch (err) {
-                                    setError((err as Error).message || 'Failed to download unified XLSX.');
-                                  }
-                                }}
-                                className="text-xs text-emerald-600 hover:text-emerald-800 hover:underline"
-                                title="Download the unified Voice AI XLSX snapshot (scheduler-ready format)"
-                              >
-                                Unified XLSX
-                              </button>
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    await downloadUnifiedForUpload(u.uploadId, 'csv');
-                                  } catch (err) {
-                                    setError((err as Error).message || 'Failed to download unified CSV.');
-                                  }
-                                }}
-                                className="text-xs text-emerald-600 hover:text-emerald-800 hover:underline"
-                                title="Download the unified Voice AI CSV snapshot (human-readable)"
-                              >
-                                Unified CSV
-                              </button>
-                            </>
+                          {u.status === 'success' && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await downloadUnifiedForUpload(u.uploadId);
+                                } catch (err) {
+                                  setError((err as Error).message || 'Failed to download unified XLSX.');
+                                }
+                              }}
+                              className="text-xs text-emerald-600 hover:text-emerald-800 hover:underline"
+                              title="Download the unified Voice AI XLSX (scheduler-ready format)"
+                            >
+                              Unified XLSX
+                            </button>
                           )}
                           <button
                             onClick={async () => {

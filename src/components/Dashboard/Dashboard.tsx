@@ -6,18 +6,12 @@ import {
   fetchUploadHistory,
   downloadUnifiedForUpload,
 } from '../../services/api';
-import { Stats, UploadRecord } from '../../types';
+import { Stats, UploadRecord, AGENT_DISPLAY_NAMES, AgentUseCase } from '../../types';
 
 const statusColors: Record<string, string> = {
   success: 'bg-green-100 text-green-700',
   partial: 'bg-yellow-100 text-yellow-700',
   failed: 'bg-red-100 text-red-700',
-};
-
-const dataTypeLabels: Record<string, string> = {
-  'student-list': 'Student List',
-  'grade-sheet': 'Grade Sheet',
-  'calling-data': 'Calling Data',
 };
 
 interface StatCard {
@@ -31,38 +25,36 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [history, setHistory] = useState<UploadRecord[]>([]);
-  const [allCalling, setAllCalling] = useState<UploadRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [downloadErr, setDownloadErr] = useState('');
 
+  // Upload history is admin/data-manager only on the backend — support
+  // agents don't have agent-data uploads of their own to browse.
+  const canSeeHistory = user?.role === 'system_admin' || user?.role === 'data_manager';
+
   useEffect(() => {
-    // The history endpoint returns newest-first; pull the calling-data slice
-    // separately so we always have the latest calling-data upload available
-    // for the prominent "Latest Unified CSV" download card, regardless of
-    // what's in the most-recent-10 mixed-type list.
     Promise.all([
       fetchStats(),
-      fetchUploadHistory(),
-      fetchUploadHistory({ dataType: 'calling-data' }),
+      canSeeHistory ? fetchUploadHistory() : Promise.resolve({ uploads: [], total: 0 }),
     ])
-      .then(([s, h, c]) => {
+      .then(([s, h]) => {
         setStats(s);
         setHistory(h.uploads.slice(0, 10));
-        setAllCalling(c.uploads);
       })
       .catch((err) => {
         setError(err?.response?.data?.error || 'Failed to load dashboard data');
       })
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Latest successful calling-data upload — its snapshot is the "current"
-  // Voice AI unified input file for the (university, program) it was uploaded
-  // under. Older successful uploads remain downloadable from Upload History.
-  const latestCalling = useMemo(
-    () => allCalling.find((u) => u.status === 'success'),
-    [allCalling]
+  // Latest successful upload (any agent) — its unified file is the "current"
+  // Voice AI input for the (university, program, agent) it was uploaded under.
+  // Older successful uploads remain downloadable from Upload History.
+  const latestUpload = useMemo(
+    () => history.find((u) => u.status === 'success'),
+    [history]
   );
 
   const statCards: StatCard[] = [
@@ -78,23 +70,23 @@ export default function Dashboard() {
       color: 'text-indigo-600 bg-indigo-50',
     },
     {
-      label: 'Students in System',
-      value: stats?.totalStudents ?? '—',
+      label: 'Total Uploads',
+      value: stats?.totalUploads ?? '—',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       ),
       color: 'text-blue-600 bg-blue-50',
     },
     {
-      label: 'Calling Records',
-      value: stats?.totalCallingRecords ?? '—',
+      label: 'Rows Processed',
+      value: stats?.totalRowsProcessed ?? '—',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+            d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
         </svg>
       ),
       color: 'text-green-600 bg-green-50',
@@ -138,7 +130,7 @@ export default function Dashboard() {
 
       {!loading && !error && (
         <>
-          {/* Latest Unified CSV — primary download surface for clients + team */}
+          {/* Latest Unified File — primary download surface for clients + team */}
           <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-6 text-white shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex-1 min-w-[280px]">
@@ -149,72 +141,51 @@ export default function Dashboard() {
                   </svg>
                   Voice AI Unified Input
                 </div>
-                {latestCalling ? (
+                {latestUpload ? (
                   <>
                     <h3 className="text-lg font-bold">
-                      Latest unified CSV — {latestCalling.university || 'all'} / {latestCalling.program || 'all'}
+                      Latest unified file — {latestUpload.university || 'all'} / {latestUpload.program || 'all'}
+                      {' '}&middot; {AGENT_DISPLAY_NAMES[latestUpload.dataType as AgentUseCase] || latestUpload.dataType}
                     </h3>
                     <p className="text-emerald-50 text-sm mt-1">
-                      Generated from <span className="font-medium">{latestCalling.fileName}</span>
-                      {' '}— {latestCalling.validRows} call rows, joined with the current
-                      Student List and Grade Sheet. Uploaded{' '}
-                      {new Date(latestCalling.uploadedAt).toLocaleString()} by {latestCalling.uploadedBy}.
+                      Generated from <span className="font-medium">{latestUpload.fileName}</span>
+                      {' '}— {latestUpload.validRows} row{latestUpload.validRows === 1 ? '' : 's'}. Uploaded{' '}
+                      {new Date(latestUpload.uploadedAt).toLocaleString()} by {latestUpload.uploadedBy}.
                     </p>
                   </>
                 ) : (
                   <>
-                    <h3 className="text-lg font-bold">No unified CSV yet</h3>
+                    <h3 className="text-lg font-bold">No unified file yet</h3>
                     <p className="text-emerald-50 text-sm mt-1">
-                      Upload calling data first — a Voice AI unified-input CSV is generated
-                      automatically with each successful calling-data upload.
+                      Upload agent data first — a Voice AI unified-input XLSX is generated
+                      automatically with each successful upload.
                     </p>
                   </>
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                {latestCalling && (
-                  <>
-                    <button
-                      onClick={async () => {
-                        setDownloadErr('');
-                        try {
-                          await downloadUnifiedForUpload(latestCalling.uploadId, 'xlsx');
-                        } catch (e) {
-                          setDownloadErr((e as Error).message || 'Download failed.');
-                        }
-                      }}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-white text-emerald-700 rounded-lg
-                        text-sm font-semibold hover:bg-emerald-50 transition-colors shadow-sm"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                      Latest XLSX
-                    </button>
-                    <button
-                      onClick={async () => {
-                        setDownloadErr('');
-                        try {
-                          await downloadUnifiedForUpload(latestCalling.uploadId, 'csv');
-                        } catch (e) {
-                          setDownloadErr((e as Error).message || 'Download failed.');
-                        }
-                      }}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-700/40 text-white
-                        border border-white/30 rounded-lg text-sm font-medium hover:bg-emerald-700/60
-                        transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                      Latest CSV
-                    </button>
-                  </>
+                {latestUpload && (
+                  <button
+                    onClick={async () => {
+                      setDownloadErr('');
+                      try {
+                        await downloadUnifiedForUpload(latestUpload.uploadId);
+                      } catch (e) {
+                        setDownloadErr((e as Error).message || 'Download failed.');
+                      }
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white text-emerald-700 rounded-lg
+                      text-sm font-semibold hover:bg-emerald-50 transition-colors shadow-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Latest XLSX
+                  </button>
                 )}
                 <Link
-                  to="/upload-history?dataType=calling-data"
+                  to="/upload-history"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-700/40 text-white
                     border border-white/30 rounded-lg text-sm font-medium hover:bg-emerald-700/60
                     transition-colors"
@@ -269,7 +240,7 @@ export default function Dashboard() {
                   <thead>
                     <tr className="text-xs text-gray-500 uppercase tracking-wide bg-gray-50">
                       <th className="px-6 py-3 text-left font-medium">File</th>
-                      <th className="px-6 py-3 text-left font-medium">Type</th>
+                      <th className="px-6 py-3 text-left font-medium">Agent</th>
                       <th className="px-6 py-3 text-left font-medium">University</th>
                       <th className="px-6 py-3 text-left font-medium">Total</th>
                       <th className="px-6 py-3 text-left font-medium">Valid</th>
@@ -285,7 +256,7 @@ export default function Dashboard() {
                           {record.fileName}
                         </td>
                         <td className="px-6 py-3 text-gray-600">
-                          {dataTypeLabels[record.dataType] || record.dataType}
+                          {AGENT_DISPLAY_NAMES[record.dataType as AgentUseCase] || record.dataType}
                         </td>
                         <td className="px-6 py-3 text-gray-600">
                           {record.university || '—'}

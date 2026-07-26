@@ -5,7 +5,6 @@ import LoginPage from './components/Auth/LoginPage';
 import AppLayout from './components/Layout/AppLayout';
 import Dashboard from './components/Dashboard/Dashboard';
 import FileUpload from './components/Upload/FileUpload';
-import CallingDataUpload from './components/Upload/CallingDataUpload';
 import DataTable from './components/DataView/DataTable';
 import SampleData from './components/SampleData/SampleData';
 import UploadHistory from './components/History/UploadHistory';
@@ -74,7 +73,6 @@ function AppRoutes() {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="upload" element={<FileUpload />} />
         <Route path="sample-data" element={<SampleData />} />
-        <Route path="calling-data" element={<CallingDataUpload />} />
         <Route path="data-view" element={<DataTable />} />
         <Route path="upload-history" element={<UploadHistory />} />
         <Route path="agent-mapping" element={<AgentMapping />} />

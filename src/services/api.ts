@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { UploadResult, UploadRecord, Stats } from '../types';
+import { UploadResult, UploadRecord, Stats, AgentUseCase } from '../types';
 
 // API base URL — defaults to local dev backend; override in production
 // via the VITE_API_URL env var (set in Vercel project settings).
@@ -44,72 +44,27 @@ export async function getMe(): Promise<import('../types').User> {
   return res.data.user;
 }
 
-export async function uploadStudentList(
+export async function uploadAgentData(
   file: File,
   university: string,
-  program: string
+  program: string,
+  agentType: AgentUseCase
 ): Promise<UploadResult> {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('university', university);
   formData.append('program', program);
+  formData.append('agentType', agentType);
 
-  const res = await api.post('/upload/student-list', formData, {
+  const res = await api.post('/upload/agent-data', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return res.data;
 }
 
-export async function uploadGradeSheet(
-  file: File,
-  university: string,
-  program: string
-): Promise<UploadResult> {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('university', university);
-  formData.append('program', program);
-
-  const res = await api.post('/upload/grade-sheet', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-  return res.data;
-}
-
-export async function uploadCallingData(
-  file: File,
-  university: string,
-  program: string
-): Promise<UploadResult> {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('university', university);
-  formData.append('program', program);
-
-  const res = await api.post('/upload/calling-data', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-  return res.data;
-}
-
-export async function fetchStudentList(university?: string, program?: string): Promise<{ data: Record<string, string>[]; total: number }> {
-  const params: Record<string, string> = {};
-  if (university) params.university = university;
-  if (program) params.program = program;
-  const res = await api.get('/data/student-list', { params });
-  return res.data;
-}
-
-export async function fetchGradeSheet(university?: string, program?: string): Promise<{ data: Record<string, string>[]; total: number }> {
-  const params: Record<string, string> = {};
-  if (university) params.university = university;
-  if (program) params.program = program;
-  const res = await api.get('/data/grade-sheet', { params });
-  return res.data;
-}
-
-export async function fetchCallingData(): Promise<{ data: Record<string, string>[]; total: number }> {
-  const res = await api.get('/data/calling-data');
+/** Fetch the validated data rows stored for a specific agent-data upload. */
+export async function fetchUploadRows(uploadId: string): Promise<{ data: Record<string, string>[]; total: number }> {
+  const res = await api.get(`/data/upload-rows/${uploadId}`);
   return res.data;
 }
 
@@ -150,7 +105,7 @@ export type AuditEventType =
 export interface AuditEvent {
   id: string;
   eventType: AuditEventType;
-  dataType?: 'student-list' | 'grade-sheet' | 'calling-data';
+  dataType?: AgentUseCase;
   uploadId: string;
   university?: string;
   program?: string;
@@ -177,23 +132,14 @@ export async function fetchAuditLog(filters?: {
   return res.data;
 }
 
-// downloadUnifiedCSV (legacy aggregate) removed — per-upload snapshots are
-// now the canonical way to fetch the Voice AI unified input file. Use
-// downloadUnifiedCSVForUpload(uploadId) instead.
-
 /**
- * Download the per-upload unified Voice AI file for a calling-data upload.
- * Format defaults to 'xlsx' — that's the format the Voice AI scheduler can
- * parse correctly (date_of_call / time_of_call stored as Excel number cells,
- * not text strings). 'csv' is also supported for human inspection.
+ * Download the per-upload unified Voice AI XLSX for an agent-data upload —
+ * date_of_call / time_of_call are stored as Excel number cells (not text
+ * strings) so the downstream scheduler can parse them correctly.
  */
-export async function downloadUnifiedForUpload(
-  uploadId: string,
-  format: 'xlsx' | 'csv' = 'xlsx'
-): Promise<void> {
+export async function downloadUnifiedForUpload(uploadId: string): Promise<void> {
   const token = localStorage.getItem('auth_token');
-  const endpoint = format === 'xlsx' ? 'unified-xlsx' : 'unified-csv';
-  const res = await fetch(`${API_BASE_URL}/data/${endpoint}/${uploadId}`, {
+  const res = await fetch(`${API_BASE_URL}/data/unified-xlsx/${uploadId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
@@ -206,7 +152,7 @@ export async function downloadUnifiedForUpload(
   }
 
   // Pull filename from Content-Disposition when the server provides one
-  let fileName = `unified-voice-ai-${uploadId}.${format}`;
+  let fileName = `unified-voice-ai-${uploadId}.xlsx`;
   const cd = res.headers.get('Content-Disposition');
   const match = cd?.match(/filename="([^"]+)"/);
   if (match) fileName = match[1];
@@ -221,10 +167,6 @@ export async function downloadUnifiedForUpload(
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
-
-/** Back-compat alias — older call sites passed no format and expected CSV-named output. */
-export const downloadUnifiedCSVForUpload = (uploadId: string) =>
-  downloadUnifiedForUpload(uploadId, 'xlsx');
 
 /**
  * Download the original raw uploaded file (CSV or XLSX) for a given upload.

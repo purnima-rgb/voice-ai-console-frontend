@@ -1,14 +1,12 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { uploadStudentList, uploadGradeSheet, downloadErrorReport } from '../../services/api';
-import { University, UploadResult } from '../../types';
-import FilterBar, { FilterDataType } from './FilterBar';
+import { uploadAgentData, downloadErrorReport, downloadUnifiedForUpload } from '../../services/api';
+import { University, UploadResult, AgentUseCase, AGENT_USE_CASES, AGENT_DISPLAY_NAMES, UNIVERSITIES, UNIVERSITY_NAMES } from '../../types';
 import Button from '../Common/Button';
 
 export default function FileUpload() {
   const { user } = useAuth();
 
-  // Access guard
   if (!user || (user.role !== 'system_admin' && user.role !== 'data_manager')) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -18,7 +16,7 @@ export default function FileUpload() {
               d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
           <p className="text-gray-500 font-medium">Access Denied</p>
-          <p className="text-gray-400 text-sm mt-1">You don't have permission to upload student data.</p>
+          <p className="text-gray-400 text-sm mt-1">You don't have permission to upload data.</p>
         </div>
       </div>
     );
@@ -26,7 +24,7 @@ export default function FileUpload() {
 
   const [university, setUniversity] = useState<University | ''>('');
   const [program, setProgram] = useState('');
-  const [dataType, setDataType] = useState<FilterDataType>('');
+  const [agentType, setAgentType] = useState<AgentUseCase | ''>('');
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -34,7 +32,8 @@ export default function FileUpload() {
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const canUpload = university && program && dataType && file && !isUploading;
+  const programs = university ? UNIVERSITIES[university] : [];
+  const canUpload = university && program && agentType && file && !isUploading;
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -59,18 +58,13 @@ export default function FileUpload() {
   };
 
   const handleUpload = async () => {
-    if (!file || !university || !program || !dataType) return;
+    if (!file || !university || !program || !agentType) return;
     setIsUploading(true);
     setError('');
     setResult(null);
 
     try {
-      let res: UploadResult;
-      if (dataType === 'student-list') {
-        res = await uploadStudentList(file, university, program);
-      } else {
-        res = await uploadGradeSheet(file, university, program);
-      }
+      const res = await uploadAgentData(file, university, program, agentType);
       setResult(res);
     } catch (err: unknown) {
       const msg =
@@ -92,14 +86,72 @@ export default function FileUpload() {
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <FilterBar
-        university={university}
-        program={program}
-        dataType={dataType}
-        onUniversityChange={(u) => { setUniversity(u); handleReset(); }}
-        onProgramChange={(p) => { setProgram(p); handleReset(); }}
-        onDataTypeChange={(d) => { setDataType(d); handleReset(); }}
-      />
+      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">Upload Filters</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* University */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              University <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={university}
+              onChange={(e) => {
+                setUniversity(e.target.value as University | '');
+                setProgram('');
+                handleReset();
+              }}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white
+                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            >
+              <option value="">Select university...</option>
+              {(Object.keys(UNIVERSITIES) as University[]).map((u) => (
+                <option key={u} value={u}>{UNIVERSITY_NAMES[u]}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Program — only shown once a university is selected */}
+          {university && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Program <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={program}
+                onChange={(e) => { setProgram(e.target.value); setAgentType(''); handleReset(); }}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white
+                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              >
+                <option value="">Select program...</option>
+                {programs.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Agent / Use Case — only shown once a program is selected */}
+          {university && program && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Agent / Use Case <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={agentType}
+                onChange={(e) => { setAgentType(e.target.value as AgentUseCase | ''); handleReset(); }}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white
+                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              >
+                <option value="">Select agent...</option>
+                {AGENT_USE_CASES.map((a) => (
+                  <option key={a} value={a}>{AGENT_DISPLAY_NAMES[a]}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Drop zone */}
       <div
@@ -147,7 +199,7 @@ export default function FileUpload() {
                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
             <p className="text-base font-medium text-gray-600">
-              Drag & drop your CSV or Excel file here
+              Drag & drop your input data file here
             </p>
             <p className="text-sm text-gray-400">or click to browse</p>
             <p className="text-xs text-gray-300 mt-1">CSV or Excel files (.csv, .xlsx, .xls), up to 50MB</p>
@@ -176,14 +228,14 @@ export default function FileUpload() {
             disabled={!canUpload}
             onClick={handleUpload}
           >
-            {isUploading ? 'Uploading...' : 'Upload File'}
+            {isUploading ? 'Uploading...' : 'Upload & Generate Unified File'}
           </Button>
           {!canUpload && !isUploading && (
             <p className="text-sm text-gray-400">
               {!university ? 'Select a university' :
                !program ? 'Select a program' :
-               !dataType ? 'Select data type' :
-               'Select a CSV or Excel file to upload'}
+               !agentType ? 'Select an agent / use case' :
+               'Select a file to upload'}
             </p>
           )}
         </div>
@@ -192,7 +244,6 @@ export default function FileUpload() {
       {/* Upload result */}
       {result && (
         <div className="space-y-4">
-          {/* Status banner — success vs rejected */}
           {result.success ? (
             <div className="bg-green-50 border border-green-300 rounded-xl p-4 flex items-start gap-3">
               <svg className="w-6 h-6 text-green-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -202,7 +253,8 @@ export default function FileUpload() {
               <div>
                 <p className="text-sm font-semibold text-green-800">Data uploaded successfully</p>
                 <p className="text-xs text-green-700 mt-0.5">
-                  All {result.totalRows} row{result.totalRows === 1 ? '' : 's'} passed validation and were saved.
+                  All {result.totalRows} row{result.totalRows === 1 ? '' : 's'} passed validation.
+                  {result.unifiedCsvAvailable && ' Unified input file generated.'}
                 </p>
               </div>
             </div>
@@ -216,7 +268,7 @@ export default function FileUpload() {
                 <p className="text-sm font-semibold text-red-800">Upload rejected — please fix errors and re-upload</p>
                 <p className="text-xs text-red-700 mt-0.5">
                   {result.errorRows} row{result.errorRows === 1 ? '' : 's'} failed validation.
-                  No data was saved. Download the error report below, correct the file, then upload it again.
+                  No data was saved.
                 </p>
               </div>
             </div>
@@ -257,6 +309,25 @@ export default function FileUpload() {
                 Download Error Report
               </Button>
             )}
+            {result.success && result.unifiedCsvAvailable && (
+              <Button
+                variant="success"
+                size="md"
+                onClick={async () => {
+                  try {
+                    await downloadUnifiedForUpload(result.uploadId);
+                  } catch (err) {
+                    setError((err as Error).message || 'Failed to download unified XLSX.');
+                  }
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download Unified XLSX
+              </Button>
+            )}
             <Button variant="secondary" size="md" onClick={handleReset}>
               Upload Another File
             </Button>
@@ -265,7 +336,7 @@ export default function FileUpload() {
           {/* Data preview */}
           {result.data.length > 0 && (
             <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-              <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+              <div className="px-5 py-3 border-b border-gray-100">
                 <h4 className="font-medium text-gray-700 text-sm">
                   Data Preview (first {result.data.length} rows)
                 </h4>
@@ -317,7 +388,7 @@ export default function FileUpload() {
                     <tr>
                       <th className="px-4 py-2 text-left font-semibold text-gray-600 border-b border-red-100">Row #</th>
                       <th className="px-4 py-2 text-left font-semibold text-gray-600 border-b border-red-100">Error</th>
-                      <th className="px-4 py-2 text-left font-semibold text-gray-600 border-b border-red-100">Email ID</th>
+                      <th className="px-4 py-2 text-left font-semibold text-gray-600 border-b border-red-100">User ID</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-red-50">
@@ -325,7 +396,7 @@ export default function FileUpload() {
                       <tr key={i} className="hover:bg-red-50">
                         <td className="px-4 py-2 text-gray-600">{err.rowNumber}</td>
                         <td className="px-4 py-2 text-red-600">{err.errorMessage}</td>
-                        <td className="px-4 py-2 text-gray-500">{err.data['Email ID'] || '—'}</td>
+                        <td className="px-4 py-2 text-gray-500">{err.data['user_id'] || '—'}</td>
                       </tr>
                     ))}
                   </tbody>
