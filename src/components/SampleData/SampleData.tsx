@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Button from '../Common/Button';
 import {
   AgentUseCase,
@@ -6,6 +7,7 @@ import {
   AGENT_DISPLAY_NAMES,
   AGENT_IDS,
   AGENT_OPTIONAL_COLUMNS,
+  AGENT_OPTIONAL_TOPLEVEL_COLUMNS,
   AGENT_SPECIFIC_COLUMNS,
 } from '../../types';
 
@@ -18,8 +20,9 @@ import {
  * template when preparing the pre-formatted file they upload for each
  * agent/use case.
  *
- * Column order matches the finalized format exactly: the 11 mandatory
- * unified columns, then the 3 common optional columns (Email, Program Name,
+ * Column order matches the finalized format exactly: the 10 mandatory
+ * unified columns, then user_last_name (optional but stays top-level, not
+ * metadata), then the 3 common optional columns (Email, Program Name,
  * Cohort ID), then the agent-specific columns. Mandatory columns are
  * strictly validated on upload; optional + agent-specific columns are
  * merged into the unified file's user_metadata JSON.
@@ -255,6 +258,13 @@ function ReferenceTable({
             system auto-restores a stripped zero, but formatting it as Text
             avoids the issue entirely).
           </p>
+          <p className="text-xs text-amber-700 mt-2">
+            More providers may be added later — see{' '}
+            <Link to="/telephony-providers" className="font-medium underline hover:text-amber-900">
+              Telephony Providers
+            </Link>{' '}
+            for the full up-to-date list.
+          </p>
         </div>
       </div>
 
@@ -386,10 +396,24 @@ function ReferenceTable({
 export default function SampleData() {
   const [tab, setTab] = useState<AgentUseCase>(AGENT_USE_CASES[0]);
 
+  // Optional for table coloring/counts: metadata columns + agent-specific
+  // columns + user_last_name (which stays a top-level column, just isn't
+  // required to have a value — unlike the others, it's NOT merged into
+  // user_metadata, so it's deliberately excluded from optionalChips below).
   const optionalSet = useMemo(
-    () => new Set([...AGENT_OPTIONAL_COLUMNS, ...AGENT_SPECIFIC_COLUMNS[tab]]),
+    () => new Set([
+      ...AGENT_OPTIONAL_COLUMNS,
+      ...AGENT_OPTIONAL_TOPLEVEL_COLUMNS,
+      ...AGENT_SPECIFIC_COLUMNS[tab],
+    ]),
     [tab]
   );
+  const metadataChips = useMemo(
+    () => [...AGENT_OPTIONAL_COLUMNS, ...AGENT_SPECIFIC_COLUMNS[tab]],
+    [tab]
+  );
+  const headers = buildHeaders(tab);
+  const mandatoryCount = headers.filter((h) => !optionalSet.has(h)).length;
 
   return (
     <div className="space-y-6">
@@ -415,10 +439,11 @@ export default function SampleData() {
         key={tab}
         title={`${AGENT_DISPLAY_NAMES[tab]} — Reference`}
         description={AGENT_DESCRIPTIONS[tab]}
-        optionalNote="Email, Program Name, Cohort ID, and every agent-specific column above are merged into the unified file's user_metadata JSON (not individually validated). The 11 mandatory columns must have a value on every row."
-        headers={buildHeaders(tab)}
+        optionalNote={`Email, Program Name, Cohort ID, and every agent-specific column above are merged into the unified file's user_metadata JSON (not individually validated). user_last_name is optional too — leave it blank if unknown; it stays its own column and is NOT merged into metadata. The ${mandatoryCount} mandatory columns must have a value on every row.`}
+        headers={headers}
         rows={AGENT_SAMPLE_ROWS[tab]}
         optional={optionalSet}
+        optionalChips={metadataChips}
         onDownload={() => downloadCSV(buildAgentCSV(tab), `GGU-MBA-${tab}-Sample.csv`)}
         downloadLabel="Download Sample CSV"
       />

@@ -66,11 +66,12 @@ export const AGENT_IDS: Record<AgentUseCase, string> = {
   'new-program-onboarding':     '6a16bd59ba7c5d66b6c4cee9',
 };
 
-/** 11 mandatory unified columns every agent-data upload must include (A-K). */
+// user_last_name is intentionally NOT in this list — it's optional (client
+// request 2026-07-27). It still stays a top-level unified-output column,
+// just not required to have a value.
 export const AGENT_MANDATORY_COLUMNS: string[] = [
   'user_id',
   'user_first_name',
-  'user_last_name',
   'user_contact',
   'from_number',
   'user_country_of_residence',
@@ -83,6 +84,15 @@ export const AGENT_MANDATORY_COLUMNS: string[] = [
 
 /** Optional columns common to every agent — merged into user_metadata. */
 export const AGENT_OPTIONAL_COLUMNS: string[] = ['Email', 'Program Name', 'Cohort ID'];
+
+/** Top-level unified columns that are optional but NOT merged into metadata. */
+export const AGENT_OPTIONAL_TOPLEVEL_COLUMNS: string[] = ['user_last_name'];
+
+/** Telephony provider ↔ from_number lookup — mirrors backend TELEPHONY_PROVIDERS. */
+export interface TelephonyProvider {
+  providerName: string;
+  fromNumber: string;
+}
 
 /** Per-agent extra columns — mirrors backend AGENT_SPECIFIC_COLUMNS in constants.ts. */
 export const AGENT_SPECIFIC_COLUMNS: Record<AgentUseCase, string[]> = {

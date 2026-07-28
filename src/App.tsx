@@ -9,6 +9,7 @@ import DataTable from './components/DataView/DataTable';
 import SampleData from './components/SampleData/SampleData';
 import UploadHistory from './components/History/UploadHistory';
 import AgentMapping from './components/AgentMapping/AgentMapping';
+import TelephonyProviders from './components/TelephonyProviders/TelephonyProviders';
 import AuditLog from './components/Audit/AuditLog';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -76,6 +77,7 @@ function AppRoutes() {
         <Route path="data-view" element={<DataTable />} />
         <Route path="upload-history" element={<UploadHistory />} />
         <Route path="agent-mapping" element={<AgentMapping />} />
+        <Route path="telephony-providers" element={<TelephonyProviders />} />
         <Route path="audit-log" element={<AuditLog />} />
       </Route>
 

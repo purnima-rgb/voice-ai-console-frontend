@@ -78,6 +78,16 @@ export async function fetchAgentMapping(): Promise<{ agents: AgentMapping[]; tot
   return res.data;
 }
 
+export interface TelephonyProviderRow {
+  providerName: string;
+  fromNumber: string;
+}
+
+export async function fetchTelephonyProviders(): Promise<{ providers: TelephonyProviderRow[]; total: number }> {
+  const res = await api.get('/data/telephony-providers');
+  return res.data;
+}
+
 export async function fetchUploadHistory(filters?: {
   dataType?: string;
   university?: string;
