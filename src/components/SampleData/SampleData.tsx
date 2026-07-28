@@ -232,6 +232,32 @@ function ReferenceTable({
         </div>
       </div>
 
+      {/* from_number callout — fixed constant, not per-student data. This is
+          the single most common source of upload errors (Excel silently
+          strips the leading zero or renders it in scientific notation when
+          the column isn't formatted as Text), so it gets its own note. */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+        <svg className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+        </svg>
+        <div>
+          <p className="text-sm font-semibold text-amber-800">
+            from_number — always the same fixed value, on every row
+          </p>
+          <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+            This is the outbound calling number for the GGU MBA campaign, not
+            student-specific data. Use{' '}
+            <span className="font-mono bg-amber-100 px-1.5 py-0.5 rounded">01169323435</span>{' '}
+            for every row, across all 5 agents. <strong>Format the column as Text in
+            Excel</strong> before entering it — otherwise Excel treats it as a number
+            and strips the leading zero (the upload will still succeed since the
+            system auto-restores a stripped zero, but formatting it as Text
+            avoids the issue entirely).
+          </p>
+        </div>
+      </div>
+
       {/* Legend + download */}
       <div className="flex flex-wrap items-center justify-between gap-4 bg-gray-50 border border-gray-200 rounded-xl p-4">
         <div className="flex flex-wrap items-center gap-6">
