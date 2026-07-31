@@ -33,7 +33,7 @@ export interface ErrorRow {
   errorMessage: string;
 }
 
-export type University = 'GGU';
+export type University = 'GGU' | 'Edgewood' | 'ESGCI' | 'Waterloo' | 'ParisBusinessSchool';
 export type AgentUseCase =
   | 'live-session-reminder'
   | 'deferral-request'
@@ -155,12 +155,21 @@ export interface Stats {
   lastSyncTime: string | null;
 }
 
+// Updated 2026-07-29 per client-shared university/program list.
 export const UNIVERSITIES: Record<University, string[]> = {
   GGU: ['MBA', 'DBA', 'MS Management'],
+  Edgewood: ['MBA', 'DBA', 'MBA + DBA Dual', 'EdD', 'MeD', 'EdD + MeD Dual'],
+  ESGCI: ['DBA'],
+  Waterloo: ['AI-CTO'],
+  ParisBusinessSchool: ['MBMT'],
 };
 
 export const UNIVERSITY_NAMES: Record<University, string> = {
   GGU: 'Golden Gate University',
+  Edgewood: 'Edgewood College',
+  ESGCI: 'ESGCI Paris',
+  Waterloo: 'Waterloo',
+  ParisBusinessSchool: 'Paris Business School',
 };
 
 export const ROLE_DISPLAY: Record<User['role'], string> = {
