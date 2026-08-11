@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { fetchAuditLog, AuditEvent, AuditEventType } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 /**
  * Audit Log — an append-only feed of every meaningful pipeline event: each
@@ -62,6 +63,7 @@ function summarizeDetail(e: AuditEvent): string {
 }
 
 export default function AuditLog() {
+  const { user } = useAuth();
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [filter, setFilter] = useState<AuditEventType | ''>('');
   const [loading, setLoading] = useState(false);
@@ -82,6 +84,17 @@ export default function AuditLog() {
   };
 
   useEffect(() => { load(filter); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [filter]);
+
+  if (!user || (user.role !== 'system_admin' && user.role !== 'data_manager')) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-lg font-semibold text-gray-700">Access Denied</p>
+          <p className="text-sm text-gray-500 mt-1">You do not have permission to view the audit log.</p>
+        </div>
+      </div>
+    );
+  }
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {};

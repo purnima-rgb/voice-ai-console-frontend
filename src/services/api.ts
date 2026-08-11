@@ -27,7 +27,6 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token');
-      localStorage.removeItem('auth_user');
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -215,7 +214,7 @@ export async function downloadRawFileForUpload(uploadId: string): Promise<void> 
 
 export async function downloadErrorReport(uploadId: string): Promise<void> {
   const token = localStorage.getItem('auth_token');
-  const res = await fetch(`http://localhost:3001/api/upload/error-report/${uploadId}`, {
+  const res = await fetch(`${API_BASE_URL}/upload/error-report/${uploadId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
