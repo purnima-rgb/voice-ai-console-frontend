@@ -1,9 +1,13 @@
 import axios from 'axios';
 import { UploadResult, UploadRecord, Stats, AgentUseCase } from '../types';
 
-// API base URL — defaults to local dev backend; override in production
-// via the VITE_API_URL env var (set in Vercel project settings).
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+// API base URL — must be set via VITE_API_URL at build time for production.
+// Falls back to localhost only for local dev (vite dev server).
+const API_BASE_URL: string = import.meta.env.VITE_API_URL || (
+  import.meta.env.PROD
+    ? (() => { throw new Error('VITE_API_URL must be set for production builds'); })()
+    : 'http://localhost:3001/api'
+);
 
 const api = axios.create({
   baseURL: API_BASE_URL,

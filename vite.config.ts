@@ -12,4 +12,8 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    sourcemap: false,  // never expose source in production
+    minify: 'esbuild',
+  },
 });
