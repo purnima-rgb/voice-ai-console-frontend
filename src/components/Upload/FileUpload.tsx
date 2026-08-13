@@ -25,6 +25,7 @@ export default function FileUpload() {
   const [university, setUniversity] = useState<University | ''>('');
   const [program, setProgram] = useState('');
   const [agentType, setAgentType] = useState<AgentUseCase | ''>('');
+  const [callType, setCallType] = useState<'Live' | 'Test' | ''>('');
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -33,7 +34,7 @@ export default function FileUpload() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const programs = university ? UNIVERSITIES[university] : [];
-  const canUpload = university && program && agentType && file && !isUploading;
+  const canUpload = university && program && agentType && callType && file && !isUploading;
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -58,13 +59,13 @@ export default function FileUpload() {
   };
 
   const handleUpload = async () => {
-    if (!file || !university || !program || !agentType) return;
+    if (!file || !university || !program || !agentType || !callType) return;
     setIsUploading(true);
     setError('');
     setResult(null);
 
     try {
-      const res = await uploadAgentData(file, university, program, agentType);
+      const res = await uploadAgentData(file, university, program, agentType, callType);
       setResult(res);
     } catch (err: unknown) {
       const msg =
@@ -88,7 +89,7 @@ export default function FileUpload() {
       {/* Filters */}
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Upload Filters</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           {/* University */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -139,7 +140,7 @@ export default function FileUpload() {
               </label>
               <select
                 value={agentType}
-                onChange={(e) => { setAgentType(e.target.value as AgentUseCase | ''); handleReset(); }}
+                onChange={(e) => { setAgentType(e.target.value as AgentUseCase | ''); setCallType(''); handleReset(); }}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white
                   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
@@ -147,6 +148,25 @@ export default function FileUpload() {
                 {AGENT_USE_CASES.map((a) => (
                   <option key={a} value={a}>{AGENT_DISPLAY_NAMES[a]}</option>
                 ))}
+              </select>
+            </div>
+          )}
+
+          {/* Call Type — only shown once an agent is selected */}
+          {university && program && agentType && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Call Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={callType}
+                onChange={(e) => { setCallType(e.target.value as 'Live' | 'Test' | ''); handleReset(); }}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white
+                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              >
+                <option value="">Select call type...</option>
+                <option value="Live">Live</option>
+                <option value="Test">Test</option>
               </select>
             </div>
           )}
@@ -235,6 +255,7 @@ export default function FileUpload() {
               {!university ? 'Select a university' :
                !program ? 'Select a program' :
                !agentType ? 'Select an agent / use case' :
+               !callType ? 'Select a call type' :
                'Select a file to upload'}
             </p>
           )}

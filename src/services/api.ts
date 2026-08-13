@@ -51,13 +51,15 @@ export async function uploadAgentData(
   file: File,
   university: string,
   program: string,
-  agentType: AgentUseCase
+  agentType: AgentUseCase,
+  callType: 'Live' | 'Test'
 ): Promise<UploadResult> {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('university', university);
   formData.append('program', program);
   formData.append('agentType', agentType);
+  formData.append('callType', callType);
 
   const res = await api.post('/upload/agent-data', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
